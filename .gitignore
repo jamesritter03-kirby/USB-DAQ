@@ -1,0 +1,19 @@
+# Build output
+bin/
+obj/
+
+# User-specific files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Logs
+*.log
+
+# Local packaging output
+artifacts/
+
+# OS files
+.DS_Store
+Thumbs.db

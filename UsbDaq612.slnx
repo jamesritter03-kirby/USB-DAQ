@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="UsbDaq.App/UsbDaq.App.csproj" />
+  <Project Path="UsbDaq.Core/UsbDaq.Core.csproj" />
+</Solution>
