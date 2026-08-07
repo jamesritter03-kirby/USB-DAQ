@@ -7,6 +7,7 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="UsbDaq.App.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        Icon="/AppIcon.png"
         Width="1280"
         Height="820"
         Title="USB DAQ — Pressure Monitor">

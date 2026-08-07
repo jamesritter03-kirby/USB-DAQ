@@ -69,6 +69,71 @@ jobs:
           fi
           echo "Created ${pkg}.zip"
 
+      - name: Build .dmg (macOS)
+        if: startsWith(matrix.rid, 'osx-')
+        shell: bash
+        run: |
+          ver="${{ steps.version.outputs.VERSION }}"
+          arch="${{ matrix.rid }}"; arch="${arch#osx-}"
+          app="UsbDaq.App.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          cp -r publish/app/. "$app/Contents/MacOS/"
+          chmod +x "$app/Contents/MacOS/UsbDaq.App"
+          cp installer/icon.icns "$app/Contents/Resources/icon.icns"
+          cat > "$app/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>USB DAQ</string>
+            <key>CFBundleDisplayName</key><string>USB DAQ</string>
+            <key>CFBundleIdentifier</key><string>com.kirby.usbdaq</string>
+            <key>CFBundleVersion</key><string>${ver}</string>
+            <key>CFBundleShortVersionString</key><string>${ver}</string>
+            <key>CFBundleExecutable</key><string>UsbDaq.App</string>
+            <key>CFBundleIconFile</key><string>icon</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>LSMinimumSystemVersion</key><string>11.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          EOF
+          staging="dmg-staging"
+          mkdir -p "$staging"
+          cp -R "$app" "$staging/"
+          ln -s /Applications "$staging/Applications"
+          hdiutil create -volname "USB DAQ" -srcfolder "$staging" -ov -format UDZO "USB-DAQ-macOS-${arch}.dmg"
+          echo "Created USB-DAQ-macOS-${arch}.dmg"
+
+      - name: Build AppImage (Linux)
+        if: matrix.rid == 'linux-x64'
+        shell: bash
+        run: |
+          appdir="AppDir"
+          mkdir -p "$appdir/usr/bin"
+          cp -r publish/app/. "$appdir/usr/bin/"
+          chmod +x "$appdir/usr/bin/UsbDaq.App"
+          cp installer/icon.png "$appdir/usb-daq.png"
+          cat > "$appdir/usb-daq.desktop" <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=USB DAQ
+          Exec=UsbDaq.App
+          Icon=usb-daq
+          Categories=Utility;Science;
+          Terminal=false
+          EOF
+          cat > "$appdir/AppRun" <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/UsbDaq.App" "$@"
+          EOF
+          chmod +x "$appdir/AppRun"
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+          APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool "$appdir" "USB-DAQ-Linux-x86_64.AppImage"
+          echo "Created USB-DAQ-Linux-x86_64.AppImage"
+
       - name: Build one-click installer (Inno Setup)
         if: matrix.rid == 'win-x64'
         shell: pwsh
@@ -94,6 +159,8 @@ jobs:
           path: |
             USB-DAQ-v${{ steps.version.outputs.VERSION }}-${{ matrix.rid }}.zip
             USB-DAQ-Setup.exe
+            USB-DAQ-macOS-*.dmg
+            USB-DAQ-Linux-x86_64.AppImage
           if-no-files-found: ignore
 
   # Collect every platform package into a single GitHub Release.
@@ -118,6 +185,9 @@ jobs:
           name: "USB DAQ v${{ steps.version.outputs.VERSION }}"
           files: |
             dist/USB-DAQ-Setup.exe
+            dist/USB-DAQ-macOS-arm64.dmg
+            dist/USB-DAQ-macOS-x64.dmg
+            dist/USB-DAQ-Linux-x86_64.AppImage
             dist/USB-DAQ-v${{ steps.version.outputs.VERSION }}-win-x64.zip
             dist/USB-DAQ-v${{ steps.version.outputs.VERSION }}-linux-x64.zip
             dist/USB-DAQ-v${{ steps.version.outputs.VERSION }}-osx-x64.zip

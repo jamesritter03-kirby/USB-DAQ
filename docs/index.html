@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>USB DAQ — Multi-Channel Pressure Data Acquisition</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <meta name="description" content="Live multi-device pressure monitoring for GP50 sensors — real-time graphs, alarms, Excel export, and streaming to MQTT, Redis, and ThingsBoard. Cross-platform for Windows, macOS, and Linux with automatic updates." />
   <style>
     :root {
@@ -111,12 +112,12 @@
     </div>
 
     <div class="cta" style="margin-top:8px;">
-      <a class="btn secondary" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest">macOS (Apple Silicon)</a>
-      <a class="btn secondary" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest">macOS (Intel)</a>
-      <a class="btn secondary" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest">Linux (x64)</a>
+      <a class="btn secondary" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest/download/USB-DAQ-macOS-arm64.dmg">macOS (Apple Silicon)</a>
+      <a class="btn secondary" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest/download/USB-DAQ-macOS-x64.dmg">macOS (Intel)</a>
+      <a class="btn secondary" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest/download/USB-DAQ-Linux-x86_64.AppImage">Linux (x64)</a>
     </div>
     <span class="sub">
-      Self-contained builds — no .NET install required ·
+      Native installers — no .NET install required ·
       <a href="https://github.com/jamesritter03-kirby/USB-DAQ/releases">all releases</a>
     </span>
 
@@ -141,11 +142,17 @@
         <li>Run <code>USB-DAQ-Setup.exe</code>. It installs per-user (no admin prompt).</li>
         <li>Launch from the Start Menu or desktop shortcut.</li>
       </ol>
-      <p style="margin-top:18px;"><strong>macOS &amp; Linux</strong> — grab the zip for your platform from the latest release.</p>
+      <p style="margin-top:18px;"><strong>macOS</strong> — open the <code>.dmg</code> and drag <strong>USB DAQ</strong> into Applications.</p>
       <ol class="steps">
-        <li>Download <code>USB-DAQ-…-osx-arm64.zip</code> (Apple Silicon), <code>-osx-x64.zip</code> (Intel), or <code>-linux-x64.zip</code>.</li>
-        <li>Unzip it, then make the launcher executable: <code>chmod +x UsbDaq.App</code>.</li>
-        <li>Run <code>./UsbDaq.App</code> from the <code>app</code> folder.</li>
+        <li>Download the <strong>Apple Silicon</strong> or <strong>Intel</strong> <code>.dmg</code> above.</li>
+        <li>Open it and drag the app to <strong>Applications</strong>.</li>
+        <li>First launch: right-click the app &rarr; <strong>Open</strong> (the build is unsigned).</li>
+      </ol>
+      <p style="margin-top:18px;"><strong>Linux</strong> — one self-contained <code>AppImage</code>, nothing to install.</p>
+      <ol class="steps">
+        <li>Download <code>USB-DAQ-Linux-x86_64.AppImage</code> above.</li>
+        <li>Make it executable: <code>chmod +x USB-DAQ-Linux-x86_64.AppImage</code>.</li>
+        <li>Run it (double-click, or <code>./USB-DAQ-Linux-x86_64.AppImage</code>).</li>
       </ol>
       <p style="margin-top:18px;">
         The app checks for new versions on startup and can update itself with one click —

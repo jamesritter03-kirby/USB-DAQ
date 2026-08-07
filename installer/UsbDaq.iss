@@ -23,6 +23,8 @@ OutputBaseFilename=USB-DAQ-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=icon.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 ; Close the running app automatically during upgrades
 CloseApplications=yes
 RestartApplications=no
