@@ -44,6 +44,13 @@ public sealed class DaqProfile
 
     public string DefaultProtocolName { get; set; } = "GP50 ASCII \u2014 Poll";
 
+    // Streaming auto-start: which targets were running when the profile was saved,
+    // and whether to reconnect them automatically when the profile is loaded.
+    public bool AutoStartStreaming { get; set; }
+    public bool MqttWasStreaming { get; set; }
+    public bool RedisWasStreaming { get; set; }
+    public bool TbWasStreaming { get; set; }
+
     public List<ChannelEntry> Channels { get; set; } = new();
 }
 

@@ -96,6 +96,18 @@
                 <ScrollViewer Margin="0,8,0,0">
                     <StackPanel Spacing="10">
 
+                        <!-- Auto-start streaming -->
+                        <Border Padding="10,8" CornerRadius="5"
+                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            <StackPanel Spacing="4">
+                                <CheckBox Content="Auto-start streaming when a profile is loaded"
+                                          IsChecked="{Binding AutoStartStreaming}" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock FontSize="11" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                           Text="When enabled, saving a profile records which targets (MQTT / Redis / ThingsBoard) were connected, and loading that profile reconnects them automatically."/>
+                            </StackPanel>
+                        </Border>
+
                         <!-- MQTT -->
                         <Expander Header="MQTT" IsExpanded="False">
                             <StackPanel Spacing="7" Margin="0,8,0,0">

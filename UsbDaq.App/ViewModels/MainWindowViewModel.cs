@@ -88,6 +88,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private int _tbPublishIntervalMs;
     private ThingsBoardStreaming? _tbTarget;
 
+    // When true, loading a profile reconnects the streaming targets that were running when it was saved
+    private bool _autoStartStreaming;
+
     public MainWindowViewModel()
     {
         _factory = new PressureDeviceFactory();
@@ -287,6 +290,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Status = "ThingsBoard disconnected.";
     }
 
+    // Reconnect streaming targets that were running when the profile was saved
+    public bool AutoStartStreaming { get => _autoStartStreaming; set => SetField(ref _autoStartStreaming, value); }
+
     // ── Profiles ─────────────────────────────────────────────
 
     private static readonly string ProfilesDir = Path.Combine(
@@ -339,6 +345,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             RedisConnStr = RedisConnStr, RedisKey = RedisKey, RedisStream = RedisStream, RedisPublishIntervalMs = RedisPublishIntervalMs, RedisExpirySeconds = RedisExpirySeconds,
             TbHost = TbHost, TbHttps = TbHttps, TbToken = TbToken, TbKeyTemplate = TbKeyTemplate, TbPathPrefix = TbPathPrefix, TbPublishIntervalMs = TbPublishIntervalMs,
             DefaultProtocolName = DefaultProtocol.Name,
+            AutoStartStreaming = AutoStartStreaming,
+            MqttWasStreaming = MqttConnected,
+            RedisWasStreaming = RedisConnected,
+            TbWasStreaming = TbConnected,
             Channels = Channels.Select(c => new ChannelEntry
             {
                 DeviceId = c.Descriptor.Id,
