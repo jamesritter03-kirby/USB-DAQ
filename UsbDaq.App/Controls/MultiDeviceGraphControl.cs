@@ -511,7 +511,6 @@ public sealed class MultiDeviceGraphControl : Control
         var xB = CursorToX(_cursorB);
         var nearA = ShowCursors && Math.Abs(point.X - xA) <= 16;
         var nearB = ShowCursors && Math.Abs(point.X - xB) <= 16;
-        var betweenCursors = ShowCursors && point.X > Math.Min(xA, xB) && point.X < Math.Max(xA, xB);
 
         if (ShowCursors && MoveCursorPair)
         {
@@ -524,11 +523,6 @@ public sealed class MultiDeviceGraphControl : Control
             _dragCursorA = nearA || (!nearB && e.KeyModifiers.HasFlag(KeyModifiers.Shift));
             _isDraggingCursor = true;
             SetCursorFromX(point.X, _dragCursorA);
-        }
-        else if (betweenCursors)
-        {
-            // Grab both cursors and move the pair together until release.
-            _isDraggingBoth = true;
         }
         else if (!_isStripMode)
         {
@@ -762,13 +756,6 @@ public sealed class MultiDeviceGraphControl : Control
         var xA = plot.Left + ((_cursorA - viewStart) / Math.Max(1, viewSpan)) * plot.Width;
         var xB = plot.Left + ((_cursorB - viewStart) / Math.Max(1, viewSpan)) * plot.Width;
 
-        // Shaded band between the cursors — a grab target for moving both together.
-        var bandLeft = Math.Min(xA, xB);
-        var bandRight = Math.Max(xA, xB);
-        if (bandRight - bandLeft > 1)
-            context.DrawRectangle(new SolidColorBrush(Color.Parse("#1FE2E8F0")), null,
-                new Rect(bandLeft, plot.Top, bandRight - bandLeft, plot.Height));
-
         // Cursor lines
         context.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#E2E8F0"), 0.85), 1.5),
             new Point(xA, plot.Top), new Point(xA, plot.Bottom));
@@ -833,8 +820,8 @@ public sealed class MultiDeviceGraphControl : Control
     private static void DrawModeHint(DrawingContext context, IBrush textBrush, Rect plot, bool isStripMode)
     {
         var hint = isStripMode
-            ? "Strip Chart  |  scroll = zoom  \u2022  drag cursor handles  \u2022  drag between = move both"
-            : "Sliding Window  |  scroll = zoom  \u2022  right-drag = pan  \u2022  drag cursors  \u2022  drag between = move both  \u2022  Shift+click = cursor A";
+            ? "Strip Chart  |  scroll = zoom  \u2022  drag cursor handles  \u2022  Pair = move both"
+            : "Sliding Window  |  scroll = zoom  \u2022  right-drag = pan  \u2022  drag cursors  \u2022  Pair = move both  \u2022  Shift+click = cursor A";
         var ft = new FormattedText(hint, CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10.5, textBrush);
         context.DrawText(ft, new Point(plot.Left + 4, Math.Max(0, plot.Top - 13)));
