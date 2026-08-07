@@ -121,16 +121,20 @@ public sealed class UpdateChecker : IDisposable
         if (!File.Exists(newExe))
             newExe = Directory.GetFiles(extractDir, exeName, SearchOption.AllDirectories)[0];
 
+        // The whole published payload (apphost + all managed assemblies) lives next to the exe;
+        // copying only the exe would leave the real code (UsbDaq.App.dll) stale.
+        var payloadDir = Path.GetDirectoryName(newExe)!;
         var currentExe = System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName!;
+        var appRoot = Path.GetDirectoryName(currentExe)!;
         var pid = System.Diagnostics.Process.GetCurrentProcess().Id;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            ApplyZipWindows(newExe, currentExe, pid);
+            ApplyZipWindows(payloadDir, appRoot, currentExe, pid);
         else
-            ApplyZipUnix(newExe, currentExe, pid);
+            ApplyZipUnix(payloadDir, appRoot, currentExe, pid);
     }
 
-    private static void ApplyZipWindows(string newExe, string currentExe, int pid)
+    private static void ApplyZipWindows(string payloadDir, string appRoot, string currentExe, int pid)
     {
         var bat = Path.Combine(Path.GetTempPath(), "usb-daq-updater.bat");
         File.WriteAllText(bat, $"""
@@ -141,7 +145,7 @@ public sealed class UpdateChecker : IDisposable
                 timeout /t 1 /nobreak >NUL
                 goto wait
             )
-            copy /y "{newExe}" "{currentExe}"
+            xcopy /e /i /y "{payloadDir}\*" "{appRoot}\" >NUL
             start "" "{currentExe}"
             del "%~f0"
             """);
@@ -155,17 +159,33 @@ public sealed class UpdateChecker : IDisposable
         });
     }
 
-    private static void ApplyZipUnix(string newExe, string currentExe, int pid)
+    private static void ApplyZipUnix(string payloadDir, string appRoot, string currentExe, int pid)
     {
+        // If running inside a macOS .app bundle, replace the whole payload, re-sign, and relaunch the bundle.
+        string? bundlePath = null;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            var idx = currentExe.IndexOf(".app/Contents/MacOS/", StringComparison.Ordinal);
+            if (idx >= 0) bundlePath = currentExe[..(idx + 4)];
+        }
+
+        var relaunch = bundlePath is not null
+            ? $"""
+              codesign --force --deep --sign - "{bundlePath}" >/dev/null 2>&1
+              xattr -dr com.apple.quarantine "{bundlePath}" >/dev/null 2>&1
+              open "{bundlePath}"
+              """
+            : $"""nohup "{currentExe}" >/dev/null 2>&1 &""";
+
         var script = Path.Combine(Path.GetTempPath(), "usb-daq-updater.sh");
         File.WriteAllText(script, $"""
             #!/bin/sh
             while kill -0 {pid} 2>/dev/null; do
                 sleep 1
             done
-            cp -f "{newExe}" "{currentExe}"
+            cp -Rf "{payloadDir}/." "{appRoot}/"
             chmod +x "{currentExe}"
-            nohup "{currentExe}" >/dev/null 2>&1 &
+            {relaunch}
             rm -f "$0"
             """);
 
