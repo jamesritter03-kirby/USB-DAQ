@@ -16,6 +16,9 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
     private bool _isConnected;
     private bool _isAcquiring;
     private bool _isAlarm;
+    private double _lowAlarm = 500;
+    private double _highAlarm = 28000;
+    private bool _alarmEnabled = true;
     private bool _isVisible = true;
     private string _signalName;
     private string _colorHex;
@@ -182,6 +185,24 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
     {
         get => _isAlarm;
         set => SetField(ref _isAlarm, value);
+    }
+
+    public double LowAlarm
+    {
+        get => _lowAlarm;
+        set => SetField(ref _lowAlarm, value);
+    }
+
+    public double HighAlarm
+    {
+        get => _highAlarm;
+        set => SetField(ref _highAlarm, value);
+    }
+
+    public bool AlarmEnabled
+    {
+        get => _alarmEnabled;
+        set => SetField(ref _alarmEnabled, value);
     }
 
     public string Status

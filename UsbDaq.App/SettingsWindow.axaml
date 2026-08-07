@@ -26,12 +26,15 @@
                             <TextBox Grid.Column="1" Text="{Binding HistoryDurationSecs}" FontSize="13"/>
                         </Grid>
                         <Separator Margin="0,4"/>
+                        <TextBlock Text="Default alarm thresholds for newly added channels. Edit per-channel limits in Channel Config."
+                                   FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         <Grid ColumnDefinitions="*,110" ColumnSpacing="8">
-                            <TextBlock Grid.Column="0" Text="Low Alarm (psig)" VerticalAlignment="Center" FontSize="13"/>
+                            <TextBlock Grid.Column="0" Text="Default Low Alarm (psig)" VerticalAlignment="Center" FontSize="13"/>
                             <TextBox Grid.Column="1" Text="{Binding LowAlarmPsig}" FontSize="13"/>
                         </Grid>
                         <Grid ColumnDefinitions="*,110" ColumnSpacing="8">
-                            <TextBlock Grid.Column="0" Text="High Alarm (psig)" VerticalAlignment="Center" FontSize="13"/>
+                            <TextBlock Grid.Column="0" Text="Default High Alarm (psig)" VerticalAlignment="Center" FontSize="13"/>
                             <TextBox Grid.Column="1" Text="{Binding HighAlarmPsig}" FontSize="13"/>
                         </Grid>
                         <Separator Margin="0,4"/>

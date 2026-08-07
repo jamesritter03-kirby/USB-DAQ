@@ -64,6 +64,9 @@ public sealed class ChannelEntry
     public string ProtocolName { get; set; } = "GP50 ASCII \u2014 Poll";
     public int StationNumber { get; set; } = 1;
     public bool IsVisible { get; set; } = true;
+    public double LowAlarm { get; set; } = 500;
+    public double HighAlarm { get; set; } = 28000;
+    public bool AlarmEnabled { get; set; } = true;
     public string MqttTopicOverride { get; set; } = "";
     public string RedisKeyOverride { get; set; } = "";
     public string TbKeyOverride { get; set; } = "";

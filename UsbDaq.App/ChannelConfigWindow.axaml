@@ -59,6 +59,26 @@
                 </Grid>
             </StackPanel>
 
+            <!-- ── Alarm Thresholds ── -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="ALARM THRESHOLDS" FontSize="10" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <CheckBox Content="Enable alarms for this channel"
+                          IsChecked="{Binding Channel.AlarmEnabled}" FontSize="13"/>
+                <Grid ColumnDefinitions="*,16,*">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="Low (psig)" FontSize="11"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBox Text="{Binding Channel.LowAlarm}" FontSize="12" Watermark="e.g. 500"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="4">
+                        <TextBlock Text="High (psig)" FontSize="11"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBox Text="{Binding Channel.HighAlarm}" FontSize="12" Watermark="e.g. 28000"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
             <!-- ── Protocol ── -->
             <StackPanel Spacing="8">
                 <TextBlock Text="PROTOCOL" FontSize="10" FontWeight="SemiBold"

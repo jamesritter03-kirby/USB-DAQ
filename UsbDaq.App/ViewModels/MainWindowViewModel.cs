@@ -359,6 +359,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ProtocolName = c.Protocol.Name,
                 StationNumber = c.StationNumber,
                 IsVisible = c.IsVisible,
+                LowAlarm = c.LowAlarm,
+                HighAlarm = c.HighAlarm,
+                AlarmEnabled = c.AlarmEnabled,
                 MqttTopicOverride = c.MqttTopicOverride,
                 RedisKeyOverride = c.RedisKeyOverride,
                 TbKeyOverride = c.TbKeyOverride,
@@ -411,6 +414,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 {
                     SignalName = entry.SignalName,
                     IsVisible = entry.IsVisible,
+                    LowAlarm = entry.LowAlarm,
+                    HighAlarm = entry.HighAlarm,
+                    AlarmEnabled = entry.AlarmEnabled,
                     MqttTopicOverride = entry.MqttTopicOverride,
                     RedisKeyOverride = entry.RedisKeyOverride,
                     TbKeyOverride = entry.TbKeyOverride,
@@ -770,7 +776,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var color = Palette[Channels.Count % Palette.Length];
         var channel = new DeviceChannelViewModel(descriptor, _sensorSpec, color, _defaultProtocol)
         {
-            Status = "Added"
+            Status = "Added",
+            LowAlarm = LowAlarmPsig,
+            HighAlarm = HighAlarmPsig
         };
 
         Channels.Add(channel);
@@ -1031,7 +1039,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     channel.AddSample(reading, MaxSamples);
-                    channel.IsAlarm = reading.PressurePsig < LowAlarmPsig || reading.PressurePsig > HighAlarmPsig;
+                    channel.IsAlarm = channel.AlarmEnabled &&
+                        (reading.PressurePsig < channel.LowAlarm || reading.PressurePsig > channel.HighAlarm);
                     UpdateAggregates();
                 });
 

@@ -30,6 +30,9 @@ public partial class ChannelConfigWindow : Window
     private Color _snapColor;
     private SerialProtocolDefinition _snapProtocol = SerialProtocolDefinition.Gp50Poll;
     private int _snapStation;
+    private double _snapLowAlarm;
+    private double _snapHighAlarm;
+    private bool _snapAlarmEnabled;
 
     // Required by Avalonia AXAML loader
     public ChannelConfigWindow()
@@ -45,6 +48,9 @@ public partial class ChannelConfigWindow : Window
         _snapColor = channel.TraceColor;
         _snapProtocol = channel.Protocol;
         _snapStation = channel.StationNumber;
+        _snapLowAlarm = channel.LowAlarm;
+        _snapHighAlarm = channel.HighAlarm;
+        _snapAlarmEnabled = channel.AlarmEnabled;
 
         InitializeComponent();
         DataContext = _vm;
@@ -84,6 +90,9 @@ public partial class ChannelConfigWindow : Window
             _vm.Channel.TraceColor = _snapColor;
             _vm.Channel.Protocol = _snapProtocol;
             _vm.Channel.StationNumber = _snapStation;
+            _vm.Channel.LowAlarm = _snapLowAlarm;
+            _vm.Channel.HighAlarm = _snapHighAlarm;
+            _vm.Channel.AlarmEnabled = _snapAlarmEnabled;
         }
         Close();
     }

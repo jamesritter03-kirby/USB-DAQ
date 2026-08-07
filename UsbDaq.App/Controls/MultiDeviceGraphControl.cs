@@ -381,33 +381,14 @@ public sealed class MultiDeviceGraphControl : Control
             }
         }
 
-        // Alarm threshold lines
+        // Per-channel alarm threshold lines (each in its own trace color)
         if (ShowAlarmLines)
         {
-            var dashStyle = DashStyle.Dash;
-            var lowNorm = Math.Clamp((LowAlarmValue - MinValue) / ySpan, 0, 1);
-            var highNorm = Math.Clamp((HighAlarmValue - MinValue) / ySpan, 0, 1);
-
-            var lowY = plot.Bottom - lowNorm * plot.Height;
-            if (lowY > plot.Top && lowY < plot.Bottom)
+            foreach (var ch in channels)
             {
-                var lowPen = new Pen(new SolidColorBrush(Color.Parse("#F59E0B")), 1.5, dashStyle);
-                context.DrawLine(lowPen, new Point(plot.Left, lowY), new Point(plot.Right, lowY));
-                var lbl = new FormattedText($"Lo {LowAlarmValue:F0}", CultureInfo.InvariantCulture,
-                    FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10,
-                    new SolidColorBrush(Color.Parse("#F59E0B")));
-                context.DrawText(lbl, new Point(plot.Right - lbl.Width - 4, lowY - lbl.Height - 1));
-            }
-
-            var highY = plot.Bottom - highNorm * plot.Height;
-            if (highY > plot.Top && highY < plot.Bottom)
-            {
-                var highPen = new Pen(new SolidColorBrush(Color.Parse("#EF4444")), 1.5, dashStyle);
-                context.DrawLine(highPen, new Point(plot.Left, highY), new Point(plot.Right, highY));
-                var lbl = new FormattedText($"Hi {HighAlarmValue:F0}", CultureInfo.InvariantCulture,
-                    FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10,
-                    new SolidColorBrush(Color.Parse("#EF4444")));
-                context.DrawText(lbl, new Point(plot.Right - lbl.Width - 4, highY + 2));
+                if (!ch.AlarmEnabled) continue;
+                DrawAlarmLevel(context, plot, ch.LowAlarm, MinValue, ySpan, ch.TraceColor, $"{ch.DisplayName} Lo", below: false);
+                DrawAlarmLevel(context, plot, ch.HighAlarm, MinValue, ySpan, ch.TraceColor, $"{ch.DisplayName} Hi", below: true);
             }
         }
 
@@ -670,11 +651,11 @@ public sealed class MultiDeviceGraphControl : Control
                 prevSlot = slot;
             }
 
-            // Alarm lines within strip
-            if (ShowAlarmLines)
+            // Alarm lines within strip (this channel's own thresholds)
+            if (ShowAlarmLines && channel.AlarmEnabled)
             {
-                var loY = strip.Bottom - Math.Clamp((LowAlarmValue - MinValue) / ySpan, 0, 1) * strip.Height;
-                var hiY = strip.Bottom - Math.Clamp((HighAlarmValue - MinValue) / ySpan, 0, 1) * strip.Height;
+                var loY = strip.Bottom - Math.Clamp((channel.LowAlarm - MinValue) / ySpan, 0, 1) * strip.Height;
+                var hiY = strip.Bottom - Math.Clamp((channel.HighAlarm - MinValue) / ySpan, 0, 1) * strip.Height;
                 if (loY > strip.Top && loY < strip.Bottom)
                     context.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#F59E0B")), 1, dashStyle),
                         new Point(strip.Left, loY), new Point(strip.Right, loY));
@@ -781,6 +762,20 @@ public sealed class MultiDeviceGraphControl : Control
         var ft = new FormattedText(hint, CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10.5, textBrush);
         context.DrawText(ft, new Point(plot.Left + 4, Math.Max(0, plot.Top - 13)));
+    }
+
+    private static void DrawAlarmLevel(DrawingContext context, Rect plot, double value,
+        double minValue, double ySpan, Color color, string label, bool below)
+    {
+        var norm = Math.Clamp((value - minValue) / ySpan, 0, 1);
+        var y = plot.Bottom - norm * plot.Height;
+        if (y <= plot.Top || y >= plot.Bottom) return;
+        var brush = new SolidColorBrush(color);
+        context.DrawLine(new Pen(brush, 1, DashStyle.Dash), new Point(plot.Left, y), new Point(plot.Right, y));
+        var ft = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"), 9.5, brush);
+        var labelY = below ? y + 2 : y - ft.Height - 1;
+        context.DrawText(ft, new Point(plot.Right - ft.Width - 4, labelY));
     }
 
     private int GetTotalSpan()
