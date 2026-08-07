@@ -794,6 +794,16 @@ public sealed class MultiDeviceGraphControl : Control
         var xA = plot.Left + ((_cursorA - viewStart) / Math.Max(1, viewSpan)) * plot.Width;
         var xB = plot.Left + ((_cursorB - viewStart) / Math.Max(1, viewSpan)) * plot.Width;
 
+        // Shaded band between the cursors — shown in Pair mode to signal they move together.
+        if (MoveCursorPair)
+        {
+            var bandLeft = Math.Min(xA, xB);
+            var bandRight = Math.Max(xA, xB);
+            if (bandRight - bandLeft > 1)
+                context.DrawRectangle(new SolidColorBrush(Color.Parse("#1FE2E8F0")), null,
+                    new Rect(bandLeft, plot.Top, bandRight - bandLeft, plot.Height));
+        }
+
         // Cursor lines
         context.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#E2E8F0"), 0.85), 1.5),
             new Point(xA, plot.Top), new Point(xA, plot.Bottom));
