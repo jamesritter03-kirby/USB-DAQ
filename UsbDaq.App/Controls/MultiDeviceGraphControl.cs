@@ -514,10 +514,14 @@ public sealed class MultiDeviceGraphControl : Control
             var totalSpan = Math.Max(1, GetTotalSpan());
             var viewSpan = ComputeViewSpan(totalSpan);
             var maxStart = Math.Max(0, totalSpan - viewSpan);
-            var viewStart = StartFraction * maxStart;
+            // While auto-following the shown position is the live edge, so pan from there.
+            var viewStart = (GraphAutoFollow && IsAcquiring) ? maxStart : StartFraction * maxStart;
             var shift = -(point.X - _lastPointer.X) / Math.Max(1, _lastPlotRect.Width) * viewSpan;
             viewStart = Math.Clamp(viewStart + shift, 0, maxStart);
-            StartFraction = maxStart <= 0 ? 0 : viewStart / maxStart;
+            var fraction = maxStart <= 0 ? 0 : viewStart / maxStart;
+            StartFraction = fraction;
+            // Detach auto-follow when the user pans back; re-attach at the live edge.
+            if (IsAcquiring && maxStart > 0) GraphAutoFollow = fraction >= 0.999;
             InvalidateVisual();
         }
         else if (_isDraggingCursor)
