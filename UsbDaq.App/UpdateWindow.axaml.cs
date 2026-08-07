@@ -76,10 +76,10 @@ public partial class UpdateWindow : Window
             _vm.DownloadStatus = "Starting download…";
             var zipPath = await checker.DownloadAsync(_vm.DownloadUrl, progress, _cts.Token);
 
-            _vm.DownloadStatus = "Download complete. Launching updater…";
+            _vm.DownloadStatus = "Download complete. Installing…";
             UpdateChecker.ApplyUpdate(zipPath);
 
-            // Exit so the updater bat can replace the running exe
+            // Exit so the installer can update files and relaunch
             if (Avalonia.Application.Current?.ApplicationLifetime is
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
                 desktop.Shutdown(0);

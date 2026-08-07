@@ -49,7 +49,8 @@ public sealed class UpdateChecker : IDisposable
 
     public async Task<string> DownloadAsync(string url, IProgress<int>? progress = null, CancellationToken ct = default)
     {
-        var dest = Path.Combine(Path.GetTempPath(), "USB-DAQ-update.zip");
+        var ext = url.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? ".exe" : ".zip";
+        var dest = Path.Combine(Path.GetTempPath(), "USB-DAQ-update" + ext);
         using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
         var total = resp.Content.Headers.ContentLength ?? -1L;
         await using var fs = File.Create(dest);
@@ -66,12 +67,19 @@ public sealed class UpdateChecker : IDisposable
         return dest;
     }
 
-    // Extracts the zip and launches a bat script that swaps the exe after this process exits
-    public static void ApplyUpdate(string zipPath)
+    // Runs the downloaded update. For a Setup.exe installer it launches a silent install;
+    // for a zip it swaps the exe via a bat script after this process exits.
+    public static void ApplyUpdate(string downloadPath)
     {
+        if (downloadPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyInstaller(downloadPath);
+            return;
+        }
+
         var extractDir = Path.Combine(Path.GetTempPath(), "USB-DAQ-update");
         if (Directory.Exists(extractDir)) Directory.Delete(extractDir, true);
-        ZipFile.ExtractToDirectory(zipPath, extractDir);
+        ZipFile.ExtractToDirectory(downloadPath, extractDir);
 
         var newExe = Path.Combine(extractDir, "app", "UsbDaq.App.exe");
         if (!File.Exists(newExe))
@@ -100,6 +108,17 @@ public sealed class UpdateChecker : IDisposable
             Arguments = $"/c \"{bat}\"",
             WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
             CreateNoWindow = true
+        });
+    }
+
+    // Launches the Inno Setup installer silently; it closes the running app, updates in place, and relaunches.
+    private static void ApplyInstaller(string exePath)
+    {
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = exePath,
+            Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /RESTARTAPPLICATIONS",
+            UseShellExecute = true
         });
     }
 

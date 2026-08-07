@@ -116,7 +116,9 @@ public partial class MainWindow : Window
         await _viewModel.CheckForUpdatesAsync(silent: false);
         if (_viewModel.PendingUpdate is { } release)
         {
-            var asset = release.Assets.FirstOrDefault(a => a.Name.EndsWith(".zip"));
+            // Prefer the one-click Setup.exe installer; fall back to the zip.
+            var asset = release.Assets.FirstOrDefault(a => a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        ?? release.Assets.FirstOrDefault(a => a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
             var dialog = new UpdateWindow(new UpdateWindowViewModel
             {
                 Version = release.TagName.TrimStart('v'),

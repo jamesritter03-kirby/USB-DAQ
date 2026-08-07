@@ -53,11 +53,30 @@ jobs:
           Compress-Archive -Path $pkg -DestinationPath "${pkg}.zip"
           Write-Host "Created ${pkg}.zip"
 
+      - name: Build one-click installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          # Inno Setup ships preinstalled on the windows-latest runner
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          & $iscc "/DMyAppVersion=$ver" installer/UsbDaq.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compile failed" }
+
+          # Give the installer a versioned name for the release asset
+          Move-Item "installer/Output/USB-DAQ-Setup.exe" "USB-DAQ-Setup-v${ver}.exe" -Force
+          Write-Host "Created USB-DAQ-Setup-v${ver}.exe"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "USB DAQ v${{ steps.version.outputs.VERSION }}"
-          files: "USB-DAQ-v${{ steps.version.outputs.VERSION }}-win-x64.zip"
+          files: |
+            USB-DAQ-Setup-v${{ steps.version.outputs.VERSION }}.exe
+            USB-DAQ-v${{ steps.version.outputs.VERSION }}-win-x64.zip
           generate_release_notes: true
           draft: false
           prerelease: false
