@@ -98,6 +98,8 @@ jobs:
           </dict>
           </plist>
           EOF
+          # Ad-hoc sign the finished bundle so the arm64 app launches (unsigned arm64 code is blocked outright).
+          codesign --force --deep --sign - "$app"
           staging="dmg-staging"
           mkdir -p "$staging"
           cp -R "$app" "$staging/"

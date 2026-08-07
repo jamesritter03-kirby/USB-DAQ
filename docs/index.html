@@ -147,6 +147,8 @@
         <li>Download the <strong>Apple Silicon</strong> or <strong>Intel</strong> <code>.dmg</code> above.</li>
         <li>Open it and drag the app to <strong>Applications</strong>.</li>
         <li>First launch: right-click the app &rarr; <strong>Open</strong> (the build is unsigned).</li>
+        <li>If macOS says it can't be opened or is "damaged," clear the download flag once:<br>
+          <code>xattr -dr com.apple.quarantine "/Applications/USB DAQ.app"</code></li>
       </ol>
       <p style="margin-top:18px;"><strong>Linux</strong> — one self-contained <code>AppImage</code>, nothing to install.</p>
       <ol class="steps">
