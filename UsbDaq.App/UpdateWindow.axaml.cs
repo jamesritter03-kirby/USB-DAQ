@@ -60,6 +60,16 @@ public partial class UpdateWindow : Window
     private async void DownloadInstallButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_vm is null) return;
+
+        // If we can't overwrite ourselves in place, a self-update would silently fail — send the
+        // user to the download page to reinstall instead of looping forever.
+        if (!UpdateChecker.CanSelfUpdate(out var reason))
+        {
+            _vm.DownloadStatus = reason;
+            Process.Start(new ProcessStartInfo(_vm.ReleaseUrl) { UseShellExecute = true });
+            return;
+        }
+
         _cts = new CancellationTokenSource();
         _vm.IsDownloading = true;
         _vm.InstallButtonLabel = "Downloading…";

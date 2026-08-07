@@ -48,6 +48,50 @@ public sealed class UpdateChecker : IDisposable
                latest > current;
     }
 
+    // Checks whether the app can actually overwrite itself in place. Returns false (with a
+    // user-facing reason) when running from a read-only or Gatekeeper-translocated location,
+    // which would otherwise make a self-update silently no-op and loop forever.
+    public static bool CanSelfUpdate(out string reason)
+    {
+        var exe = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+        if (string.IsNullOrEmpty(exe))
+        {
+            reason = "Could not locate the running application to update it.";
+            return false;
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) &&
+            exe.Contains("/AppTranslocation/", StringComparison.Ordinal))
+        {
+            reason = "USB DAQ is running from a temporary read-only location (macOS Gatekeeper translocation). " +
+                     "Move it to your Applications folder, reopen it, then update.";
+            return false;
+        }
+
+        var dir = Path.GetDirectoryName(exe);
+        if (string.IsNullOrEmpty(dir))
+        {
+            reason = "Could not determine the application folder.";
+            return false;
+        }
+
+        try
+        {
+            var probe = Path.Combine(dir, ".usbdaq-write-test");
+            File.WriteAllText(probe, "ok");
+            File.Delete(probe);
+        }
+        catch
+        {
+            reason = "USB DAQ can't write to its own folder, so it can't update itself here. " +
+                     "Reinstall it (drag it to Applications), then updates will work.";
+            return false;
+        }
+
+        reason = "";
+        return true;
+    }
+
     // Runtime identifier of the current OS/architecture, matching the RIDs used
     // when publishing releases (win-x64, linux-x64, osx-x64, osx-arm64).
     public static string CurrentRid
