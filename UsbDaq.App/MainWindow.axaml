@@ -7,150 +7,319 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="UsbDaq.App.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Width="1200"
-        Height="760"
-        Title="USB DAQ - 612CSFCZ10FM Pressure Monitor">
+        Width="1280"
+        Height="820"
+        Title="USB DAQ — Pressure Monitor">
     <Window.Resources>
-        <SolidColorBrush x:Key="PanelBrush" Color="{DynamicResource SystemAltHighColor}" />
-        <SolidColorBrush x:Key="HeaderBrush" Color="#1D3557" />
-        <SolidColorBrush x:Key="HeaderTextBrush" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="GraphBackBrush" Color="#0E1B2A" />
-        <SolidColorBrush x:Key="AlarmBrush" Color="#B42318" />
+        <SolidColorBrush x:Key="ToolbarBrush" Color="#1A2B3C" />
+        <SolidColorBrush x:Key="ToolbarTextBrush" Color="#F1F5F9" />
+        <SolidColorBrush x:Key="GraphBackBrush" Color="#0D1B2A" />
+        <SolidColorBrush x:Key="AlarmBrush" Color="#EF4444" />
+        <SolidColorBrush x:Key="ConnectedBrush" Color="#10B981" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#475569" />
     </Window.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" ColumnDefinitions="*" Margin="16" RowSpacing="10">
-        <Border Grid.Row="0" Padding="14" CornerRadius="10" Background="{StaticResource HeaderBrush}">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="USB Pressure DAQ Console" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource HeaderTextBrush}" />
-                    <TextBlock Text="{Binding SensorSummary}" Foreground="{StaticResource HeaderTextBrush}" Opacity="0.85" />
+    <Grid RowDefinitions="48,*,26">
+
+        <!-- ══════════════════ TOP TOOLBAR ══════════════════ -->
+        <Border Grid.Row="0" Background="{StaticResource ToolbarBrush}">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="14,0">
+
+                <!-- Left: title + sensor info -->
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Text="USB Pressure DAQ" FontSize="15" FontWeight="Bold"
+                               Foreground="{StaticResource ToolbarTextBrush}"/>
+                    <Border Width="1" Height="16" Background="#334155" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding SensorSummary}" FontSize="11"
+                               Foreground="#94A3B8" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <TextBlock VerticalAlignment="Center" Text="Theme" Foreground="{StaticResource HeaderTextBrush}" />
-                    <ComboBox Width="120" ItemsSource="{Binding ThemeModes}" SelectedItem="{Binding ThemeMode}" SelectionChanged="ThemeCombo_OnSelectionChanged" />
+                <!-- Center: live indicator + alarm badge -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center"
+                            VerticalAlignment="Center" Spacing="8">
+                    <Ellipse Width="8" Height="8" Fill="{StaticResource ConnectedBrush}"
+                             IsVisible="{Binding IsAcquiring}"/>
+                    <Ellipse Width="8" Height="8" Fill="{StaticResource MutedBrush}"
+                             IsVisible="{Binding IsNotAcquiring}"/>
+                    <TextBlock Text="{Binding AcquisitionStatusLabel}" FontSize="12"
+                               Foreground="{StaticResource ToolbarTextBrush}" VerticalAlignment="Center"/>
+                    <Border Background="#7F1D1D" CornerRadius="4" Padding="8,2"
+                            IsVisible="{Binding IsAlarmActive}">
+                        <TextBlock Text="⚠ ALARM" Foreground="#FCA5A5" FontSize="11" FontWeight="Bold"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Right: action buttons + theme -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Content="▶  Start" Click="StartButton_OnClick"
+                            IsEnabled="{Binding CanStartAcquisition}" Padding="14,5"/>
+                    <Button Content="■  Stop" Click="StopButton_OnClick"
+                            IsEnabled="{Binding CanStopAcquisition}" Padding="14,5"/>
+                    <ToggleButton Content="⏺  Record" IsChecked="{Binding IsRecording}" Padding="14,5"/>
+                    <!-- Profiles flyout -->
+                    <Button Content="Profiles ▾" Padding="14,5">
+                        <Button.Flyout>
+                            <Flyout Placement="Bottom">
+                                <StackPanel Spacing="5" Margin="4" Width="240">
+                                    <TextBlock Text="PROFILES" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                        <TextBox Grid.Column="0" Text="{Binding NewProfileName}"
+                                                 FontSize="12" Watermark="Profile name…"/>
+                                        <Button Grid.Column="1" Content="Save" Click="SaveProfile_Click"
+                                                Padding="10,5" FontSize="12"/>
+                                    </Grid>
+                                    <Separator Margin="0,2"/>
+                                    <ListBox ItemsSource="{Binding SavedProfileNames}" MaxHeight="200"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+                                                    <TextBlock Text="{Binding}" VerticalAlignment="Center" FontSize="12"/>
+                                                    <Button Grid.Column="1" Content="Load"
+                                                            Click="LoadProfileItem_Click"
+                                                            Padding="6,3" FontSize="11"/>
+                                                    <Button Grid.Column="2" Content="✕"
+                                                            Click="DeleteProfileItem_Click"
+                                                            Width="24" Padding="2" FontSize="11"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                    <ComboBox ItemsSource="{Binding ThemeModes}" SelectedItem="{Binding ThemeMode}"
+                              Width="110" SelectionChanged="ThemeCombo_OnSelectionChanged"
+                              VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Padding="10" CornerRadius="8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
-            <Grid ColumnDefinitions="2.2*,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
-                <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableDevices}" SelectedItem="{Binding SelectedAvailableDevice}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding DisplayName}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+        <!-- ══════════════════ MAIN CONTENT ══════════════════ -->
+        <Grid Grid.Row="1" ColumnDefinitions="310,*">
 
-                <Button Grid.Column="1" Content="Refresh" Click="RefreshButton_OnClick" MinWidth="86" />
-                <Button Grid.Column="2" Content="Add Channel" Click="AddChannelButton_OnClick" MinWidth="98" IsEnabled="{Binding CanAddChannel}" />
-                <Button Grid.Column="3" Content="Connect All" Click="ConnectAllButton_OnClick" MinWidth="92" />
-                <Button Grid.Column="4" Content="Disconnect All" Click="DisconnectAllButton_OnClick" MinWidth="104" />
-                <Button Grid.Column="5" Content="Start" Click="StartButton_OnClick" MinWidth="78" IsEnabled="{Binding CanStartAcquisition}" />
-                <Button Grid.Column="6" Content="Stop" Click="StopButton_OnClick" MinWidth="78" IsEnabled="{Binding CanStopAcquisition}" />
-            </Grid>
-        </Border>
+            <!-- ─── LEFT SIDEBAR ─── -->
+            <Border Grid.Column="0" BorderThickness="0,0,1,0"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+                <Grid RowDefinitions="Auto,Auto,*,Auto">
 
-        <Border Grid.Row="2" Padding="10" CornerRadius="8" Background="{DynamicResource SystemControlBackgroundChromeLowBrush}">
-            <Grid ColumnDefinitions="Auto,120,Auto,120,Auto,120,Auto,2*,Auto" ColumnSpacing="8">
-                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Sample Interval (ms)" />
-                <TextBox Grid.Column="1" Text="{Binding SampleIntervalMs}" />
+                    <!-- Device selector section -->
+                    <Border Grid.Row="0" Padding="10,8"
+                            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+                        <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                                <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableDevices}"
+                                          SelectedItem="{Binding SelectedAvailableDevice}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DisplayName}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Button Grid.Column="1" Content="⟳" Click="RefreshButton_OnClick"
+                                        ToolTip.Tip="Refresh device list" Width="32" Padding="4,5"
+                                        FontSize="14"/>
+                                <Button Grid.Column="2" Content="+ Add" Click="AddChannelButton_OnClick"
+                                        IsEnabled="{Binding CanAddChannel}" Padding="10,5"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                <Button Grid.Column="0" Content="Connect All"
+                                        Click="ConnectAllButton_OnClick" HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"/>
+                                <Button Grid.Column="1" Content="Disc. All"
+                                        Click="DisconnectAllButton_OnClick" Padding="8,5"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
 
-                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="Low Alarm" />
-                <TextBox Grid.Column="3" Text="{Binding LowAlarmPsig}" />
-
-                <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="High Alarm" />
-                <TextBox Grid.Column="5" Text="{Binding HighAlarmPsig}" />
-
-                <CheckBox Grid.Column="6" VerticalAlignment="Center" IsChecked="{Binding IsRecording}" Content="Record CSV" />
-                <TextBox Grid.Column="7" Text="{Binding RecordFilePath}" />
-                <Button Grid.Column="8" Content="Clear Samples" Click="ClearButton_OnClick" MinWidth="94" />
-            </Grid>
-        </Border>
-
-        <Border Grid.Row="3" Padding="8" CornerRadius="8" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*" ColumnSpacing="10">
-                <TextBlock Grid.Column="0" Text="Fleet Avg:" FontWeight="SemiBold" />
-                <TextBlock Grid.Column="1" Text="{Binding OverallPressureText}" FontWeight="Bold" />
-                <TextBlock Grid.Column="2" Text="ALARM" Foreground="{StaticResource AlarmBrush}" FontWeight="Bold" IsVisible="{Binding IsAlarmActive}" />
-                <CheckBox Grid.Column="3" IsChecked="{Binding ShowLegend, ElementName=GraphControl}" Content="Legend" VerticalAlignment="Center" />
-                <CheckBox Grid.Column="4" IsChecked="{Binding ShowCursors, ElementName=GraphControl}" Content="Cursors" VerticalAlignment="Center" />
-                <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                    <Button Content="Zoom In" Click="ZoomInButton_OnClick" />
-                    <Button Content="Zoom Out" Click="ZoomOutButton_OnClick" />
-                    <Button Content="Reset Zoom" Click="ResetZoomButton_OnClick" />
-                    <Button Content="Connect Selected" Click="ConnectSelectedButton_OnClick" IsEnabled="{Binding CanConnectSelected}" />
-                    <Button Content="Disconnect Selected" Click="DisconnectSelectedButton_OnClick" IsEnabled="{Binding CanDisconnectSelected}" />
-                    <Button Content="Remove Selected" Click="RemoveSelectedButton_OnClick" IsEnabled="{Binding CanRemoveChannel}" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <Grid Grid.Row="4" ColumnDefinitions="1.35*,2*" ColumnSpacing="10">
-            <Border Grid.Column="0" Padding="8" CornerRadius="8" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="6">
-                    <Grid Grid.Row="0" ColumnDefinitions="Auto,90,1.5*,1.3*,*,*,*,*,Auto,*" ColumnSpacing="8">
-                        <TextBlock Grid.Column="0" Text="Vis" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="1" Text="Color" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="2" Text="Signal" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="3" Text="Device" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="4" Text="Pressure" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="5" Text="Min" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="6" Text="Max" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="7" Text="Avg" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="8" Text="Alarm" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="9" Text="Status" FontWeight="SemiBold" />
+                    <!-- Channel list header -->
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="10,6,10,2">
+                        <TextBlock Grid.Column="0" Text="CHANNELS" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="Clear All" Click="ClearButton_OnClick"
+                                Padding="6,2" FontSize="11"/>
                     </Grid>
 
-                    <ListBox Grid.Row="1" ItemsSource="{Binding Channels}" SelectedItem="{Binding SelectedChannel}">
+                    <!-- Channel cards -->
+                    <ListBox Grid.Row="2" ItemsSource="{Binding Channels}"
+                             SelectedItem="{Binding SelectedChannel}"
+                             Padding="6,4,6,4"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemContainerTheme>
+                            <ControlTheme TargetType="ListBoxItem" x:DataType="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0,2"/>
+                            </ControlTheme>
+                        </ListBox.ItemContainerTheme>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Padding="6" Margin="0,1" CornerRadius="4" Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                    <Grid ColumnDefinitions="Auto,90,1.5*,1.3*,*,*,*,*,Auto,*" ColumnSpacing="8">
-                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsVisible}" VerticalAlignment="Center" />
-                                        <Border Grid.Column="1" Width="82" Height="22" CornerRadius="3" Background="{Binding TraceColor}" BorderBrush="#263238" BorderThickness="1" VerticalAlignment="Center" />
-                                        <TextBox Grid.Column="2" Text="{Binding SignalName}" />
-                                        <TextBlock Grid.Column="3" Text="{Binding DeviceName}" />
-                                        <TextBlock Grid.Column="4" Text="{Binding CurrentPressureText}" />
-                                        <TextBlock Grid.Column="5" Text="{Binding MinObserved, StringFormat={}{0:F1}}" />
-                                        <TextBlock Grid.Column="6" Text="{Binding MaxObserved, StringFormat={}{0:F1}}" />
-                                        <TextBlock Grid.Column="7" Text="{Binding AverageObserved, StringFormat={}{0:F1}}" />
-                                        <CheckBox Grid.Column="8" IsChecked="{Binding IsAlarm}" IsEnabled="False" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="9" Text="{Binding Status}" />
-                                    </Grid>
+                                <Border CornerRadius="6" ClipToBounds="True" MinHeight="86">
+                                    <Panel>
+                                        <!-- Alarm tint overlay -->
+                                        <Border Background="#20EF4444" CornerRadius="6"
+                                                IsVisible="{Binding IsAlarm}"/>
+                                        <Grid ColumnDefinitions="5,*,Auto">
+                                            <!-- Color strip -->
+                                            <Rectangle Grid.Column="0" Fill="{Binding TraceColor}"/>
+                                            <!-- Main content -->
+                                            <StackPanel Grid.Column="1" Margin="10,8,4,8" Spacing="3">
+                                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4">
+                                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsVisible}"
+                                                              VerticalAlignment="Center"/>
+                                                    <TextBox Grid.Column="1" Text="{Binding SignalName}"
+                                                             FontWeight="SemiBold" FontSize="12"
+                                                             BorderThickness="0" Background="Transparent"
+                                                             Padding="2,0" VerticalAlignment="Center"/>
+                                                </Grid>
+                                                <TextBlock Text="{Binding CurrentPressureText}"
+                                                           FontSize="21" FontWeight="Bold"/>
+                                                <Grid ColumnDefinitions="*,*,*">
+                                                    <StackPanel Grid.Column="0" Spacing="1">
+                                                        <TextBlock Text="MIN" FontSize="9"
+                                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                                        <TextBlock Text="{Binding MinObserved, StringFormat={}{0:F0}}" FontSize="11"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Spacing="1">
+                                                        <TextBlock Text="AVG" FontSize="9"
+                                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                                        <TextBlock Text="{Binding AverageObserved, StringFormat={}{0:F0}}" FontSize="11"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" Spacing="1">
+                                                        <TextBlock Text="MAX" FontSize="9"
+                                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                                        <TextBlock Text="{Binding MaxObserved, StringFormat={}{0:F0}}" FontSize="11"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <TextBlock Text="{Binding Status}" FontSize="10"
+                                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                            </StackPanel>
+                                            <!-- Actions -->
+                                            <StackPanel Grid.Column="2" Margin="4,8,8,8" Spacing="4"
+                                                        VerticalAlignment="Center">
+                                                <Button Content="Connect" Click="CardConnect_OnClick"
+                                                        FontSize="11" Padding="6,3"
+                                                        IsVisible="{Binding IsNotConnected}"/>
+                                                <Button Content="Disc." Click="CardDisconnect_OnClick"
+                                                        FontSize="11" Padding="6,3"
+                                                        IsVisible="{Binding IsConnected}"/>
+                                                <Button Content="⚙" Click="CardConfigure_OnClick"
+                                                        FontSize="13" Width="26" Height="26" Padding="2"
+                                                        ToolTip.Tip="Configure channel"/>
+                                                <Button Content="✕" Click="CardRemove_OnClick"
+                                                        FontSize="12" Width="26" Height="26" Padding="2"
+                                                        ToolTip.Tip="Remove channel"/>
+                                                <Ellipse Width="8" Height="8"
+                                                         Fill="{StaticResource AlarmBrush}"
+                                                         IsVisible="{Binding IsAlarm}"
+                                                         ToolTip.Tip="Channel in alarm"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Panel>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <Border Grid.Row="2" Padding="8" CornerRadius="6" Background="{DynamicResource SystemControlBackgroundChromeLowBrush}" IsVisible="{Binding HasSelectedChannel}">
-                        <Grid ColumnDefinitions="Auto,220,Auto,*" ColumnSpacing="8" RowDefinitions="Auto,Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Signal Name" />
-                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SelectedChannel.SignalName}" Watermark="Enter display name" />
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Top" Text="Color Picker" Margin="0,6,0,0" />
-                            <WrapPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,6,0,0" Orientation="Horizontal" ItemHeight="24" ItemWidth="24">
-                                <Button Tag="#3B82F6" Click="SignalColorSwatch_OnClick" Background="#3B82F6" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,6" />
-                                <Button Tag="#EF4444" Click="SignalColorSwatch_OnClick" Background="#EF4444" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,6" />
-                                <Button Tag="#10B981" Click="SignalColorSwatch_OnClick" Background="#10B981" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,6" />
-                                <Button Tag="#F59E0B" Click="SignalColorSwatch_OnClick" Background="#F59E0B" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,6" />
-                                <Button Tag="#A855F7" Click="SignalColorSwatch_OnClick" Background="#A855F7" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,6" />
-                                <Button Tag="#14B8A6" Click="SignalColorSwatch_OnClick" Background="#14B8A6" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,6" />
-                                <Button Tag="#F97316" Click="SignalColorSwatch_OnClick" Background="#F97316" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,6" />
-                                <Button Tag="#E11D48" Click="SignalColorSwatch_OnClick" Background="#E11D48" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,6" />
-                                <Button Tag="#FFFFFF" Click="SignalColorSwatch_OnClick" Background="#FFFFFF" BorderBrush="#334155" BorderThickness="1" Margin="0,0,6,6" />
-                                <Button Tag="#94A3B8" Click="SignalColorSwatch_OnClick" Background="#94A3B8" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,6" />
-                            </WrapPanel>
-                        </Grid>
+                    <!-- Settings & stats footer (compact) -->
+                    <Border Grid.Row="3" Padding="10,10"
+                            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                <TextBlock Grid.Column="0" Text="Fleet Average"
+                                           VerticalAlignment="Center" FontSize="12"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding OverallPressureText}"
+                                           FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Button Content="⚙  Settings" Click="OpenSettings_Click"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Padding="10,7"/>
+                        </StackPanel>
                     </Border>
                 </Grid>
             </Border>
 
-            <Border Grid.Column="1" Padding="8" CornerRadius="8" Background="{StaticResource GraphBackBrush}">
-                <Grid RowDefinitions="*,Auto,Auto,Auto" RowSpacing="6">
+            <!-- ─── RIGHT: GRAPH AREA ─── -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+
+                <!-- Graph toolbar -->
+                <Border Grid.Row="0" Padding="10,6"
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="6">
+                        <TextBlock Grid.Column="0" Text="Zoom:" VerticalAlignment="Center" FontSize="12"/>
+                        <Button Grid.Column="1" Content="10s" Click="Zoom10sButton_OnClick"
+                                Padding="10,4" FontSize="12"/>
+                        <Button Grid.Column="2" Content="30s" Click="Zoom30sButton_OnClick"
+                                Padding="10,4" FontSize="12"/>
+                        <Button Grid.Column="3" Content="1 min" Click="Zoom1mButton_OnClick"
+                                Padding="10,4" FontSize="12"/>
+                        <Button Grid.Column="4" Content="5 min" Click="Zoom5mButton_OnClick"
+                                Padding="10,4" FontSize="12"/>
+                        <Button Grid.Column="5" Content="All" Click="ResetZoomButton_OnClick"
+                                Padding="10,4" FontSize="12"/>
+
+                        <!-- + / - zoom -->
+                        <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <Border Width="1" Height="18"
+                                    Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                                    VerticalAlignment="Center" Margin="4,0"/>
+                            <Button Content="+" Click="ZoomInButton_OnClick" Width="28" Padding="4,4" FontSize="14"/>
+                            <Button Content="−" Click="ZoomOutButton_OnClick" Width="28" Padding="4,4" FontSize="14"/>
+                        </StackPanel>
+
+                        <!-- Mode and view options -->
+                        <StackPanel Grid.Column="8" Orientation="Horizontal" Spacing="12"
+                                    VerticalAlignment="Center">
+                            <ComboBox ItemsSource="{Binding GraphModes}" SelectedItem="{Binding GraphMode}"
+                                      Width="160" FontSize="12"/>
+                            <CheckBox Content="Auto Follow" IsChecked="{Binding GraphAutoFollow}" FontSize="12"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="9" Orientation="Horizontal" Spacing="12"
+                                    VerticalAlignment="Center">
+                            <CheckBox Content="Cursors" IsChecked="{Binding ShowCursors}" FontSize="12"/>
+                            <CheckBox Content="Snap" IsChecked="{Binding CursorSnapToData}" FontSize="12"
+                                      ToolTip.Tip="Snap cursors to nearest data sample"/>
+                            <CheckBox Content="Markers" IsChecked="{Binding ShowPointMarkers}" FontSize="12"/>
+                            <CheckBox Content="Legend" IsChecked="{Binding ShowLegend}" FontSize="12"/>
+                            <CheckBox Content="Alarm Lines" IsChecked="{Binding ShowAlarmLines}" FontSize="12"/>
+                            <CheckBox Content="Stacked" IsChecked="{Binding StackedPlots}" FontSize="12"/>
+                        </StackPanel>
+
+                        <!-- Export flyout button -->
+                        <Button Grid.Column="10" Content="Export ▾" Padding="10,4" FontSize="12"
+                                VerticalAlignment="Center">
+                            <Button.Flyout>
+                                <Flyout Placement="Bottom">
+                                    <StackPanel Spacing="3" Margin="4" MinWidth="240">
+                                        <Button Content="Copy Data to Clipboard (CSV)"
+                                                Click="ExportClipboard_Click" HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left" Padding="10,5"/>
+                                        <Button Content="Save Graph as PNG…"
+                                                Click="ExportPng_Click" HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left" Padding="10,5"/>
+                                        <Separator Margin="0,2"/>
+                                        <Button Content="Export Data as CSV…"
+                                                Click="ExportCsv_Click" HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left" Padding="10,5"/>
+                                        <Button Content="Export Data as JSON…"
+                                                Click="ExportJson_Click" HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left" Padding="10,5"/>
+                                        <Button Content="Export Data as Excel (.xlsx)…"
+                                                Click="ExportExcel_Click" HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left" Padding="10,5"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Graph canvas -->
+                <Border Grid.Row="1" Background="{StaticResource GraphBackBrush}">
                     <controls:MultiDeviceGraphControl Name="GraphControl"
-                                                      Grid.Row="0"
                                                       Series="{Binding Channels}"
                                                       MinValue="{Binding MinPressurePsig}"
                                                       MaxValue="{Binding MaxPressurePsig}"
@@ -158,41 +327,31 @@
                                                       GraphMode="{Binding GraphMode}"
                                                       GraphAutoFollow="{Binding GraphAutoFollow}"
                                                       ShowPointMarkers="{Binding ShowPointMarkers}"
-                                                      IsAcquiring="{Binding IsAcquiring}" />
+                                                      ShowLegend="{Binding ShowLegend}"
+                                                      ShowCursors="{Binding ShowCursors}"
+                                                      ShowAlarmLines="{Binding ShowAlarmLines}"
+                                                      StackedPlots="{Binding StackedPlots}"
+                                                      CursorSnapToData="{Binding CursorSnapToData}"
+                                                      LowAlarmValue="{Binding LowAlarmPsig}"
+                                                      HighAlarmValue="{Binding HighAlarmPsig}"
+                                                      IsAcquiring="{Binding IsAcquiring}"/>
+                </Border>
 
-                    <Grid Grid.Row="1" ColumnDefinitions="Auto,170,Auto,Auto,Auto,*" ColumnSpacing="8" VerticalAlignment="Center">
-                        <TextBlock Grid.Column="0" Foreground="White" VerticalAlignment="Center" Text="Mode" />
-                        <ComboBox Grid.Column="1" ItemsSource="{Binding GraphModes}" SelectedItem="{Binding GraphMode}" />
-                        <CheckBox Grid.Column="2" IsChecked="{Binding GraphAutoFollow}" Content="Auto Follow" Foreground="White" VerticalAlignment="Center" />
-                        <CheckBox Grid.Column="3" IsChecked="{Binding ShowPointMarkers}" Content="Markers" Foreground="White" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="4" Foreground="White" VerticalAlignment="Center" Text="Window" />
-                    </Grid>
-
-                    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
-                        <TextBlock Grid.Column="0" Foreground="White" VerticalAlignment="Center" Text="Visible Span" />
-                        <Slider Grid.Column="1"
-                                Minimum="0.02"
-                                Maximum="1"
-                                Value="{Binding WindowFraction, ElementName=GraphControl}"
-                                VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2"
-                                   Foreground="White"
-                                   VerticalAlignment="Center"
-                                   Text="{Binding WindowFraction, ElementName=GraphControl, StringFormat={}{0:P0}}" />
-                    </Grid>
-
-                    <ScrollBar Grid.Row="3"
-                               Orientation="Horizontal"
-                               Minimum="0"
-                               Maximum="1"
-                               Value="{Binding StartFraction, ElementName=GraphControl}"
-                               ViewportSize="{Binding WindowFraction, ElementName=GraphControl}" />
-                </Grid>
-            </Border>
+                <!-- Scrollbar -->
+                <ScrollBar Grid.Row="2"
+                           Orientation="Horizontal"
+                           Minimum="0"
+                           Maximum="1"
+                           Value="{Binding StartFraction, ElementName=GraphControl}"
+                           ViewportSize="{Binding WindowFraction, ElementName=GraphControl}"/>
+            </Grid>
         </Grid>
 
-        <Border Grid.Row="5" Padding="8" CornerRadius="8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
-            <TextBlock Text="{Binding Status}" />
+        <!-- ══════════════════ STATUS BAR ══════════════════ -->
+        <Border Grid.Row="2" Padding="12,4"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+            <TextBlock Text="{Binding Status}" FontSize="12" VerticalAlignment="Center"/>
         </Border>
+
     </Grid>
 </Window>

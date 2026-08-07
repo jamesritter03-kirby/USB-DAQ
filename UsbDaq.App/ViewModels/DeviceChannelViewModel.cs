@@ -28,14 +28,28 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
     private double _averageObserved;
     private long _sampleCount;
     private double _sumObserved;
+    private SerialProtocolDefinition _protocol;
+    private int _stationNumber;
+    private string _mqttTopicOverride = "";
+    private string _redisKeyOverride = "";
+    private string _tbKeyOverride = "";
+    private string _tbTokenOverride = "";
 
-    public DeviceChannelViewModel(DeviceDescriptor descriptor, SensorSpecification sensorSpec, string colorHex)
+    // Last-published timestamps for rate-limiting per streaming target (not UI state)
+    internal DateTimeOffset MqttLastPublished = DateTimeOffset.MinValue;
+    internal DateTimeOffset RedisLastPublished = DateTimeOffset.MinValue;
+    internal DateTimeOffset TbLastPublished = DateTimeOffset.MinValue;
+
+    public DeviceChannelViewModel(DeviceDescriptor descriptor, SensorSpecification sensorSpec,
+        string colorHex, SerialProtocolDefinition? protocol = null, int stationNumber = 1)
     {
         Descriptor = descriptor;
         _sensorSpec = sensorSpec;
         _signalName = descriptor.DisplayName;
         _colorHex = colorHex;
         _traceColor = ParseColorOrDefault(colorHex);
+        _protocol = protocol ?? SerialProtocolDefinition.Gp50Poll;
+        _stationNumber = stationNumber;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -93,6 +107,8 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
 
     public string DeviceName => Descriptor.DisplayName;
 
+    public string Units => _sensorSpec.Units;
+
     public string SignalName
     {
         get => _signalName;
@@ -111,7 +127,49 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
     public bool IsConnected
     {
         get => _isConnected;
-        set => SetField(ref _isConnected, value);
+        set
+        {
+            if (SetField(ref _isConnected, value))
+                OnPropertyChanged(nameof(IsNotConnected));
+        }
+    }
+
+    public bool IsNotConnected => !IsConnected;
+
+    public SerialProtocolDefinition Protocol
+    {
+        get => _protocol;
+        set => SetField(ref _protocol, value);
+    }
+
+    public int StationNumber
+    {
+        get => _stationNumber;
+        set => SetField(ref _stationNumber, Math.Clamp(value, 0, 999));
+    }
+
+    public string MqttTopicOverride
+    {
+        get => _mqttTopicOverride;
+        set => SetField(ref _mqttTopicOverride, value ?? "");
+    }
+
+    public string RedisKeyOverride
+    {
+        get => _redisKeyOverride;
+        set => SetField(ref _redisKeyOverride, value ?? "");
+    }
+
+    public string TbKeyOverride
+    {
+        get => _tbKeyOverride;
+        set => SetField(ref _tbKeyOverride, value ?? "");
+    }
+
+    public string TbTokenOverride
+    {
+        get => _tbTokenOverride;
+        set => SetField(ref _tbTokenOverride, value ?? "");
     }
 
     public bool IsAcquiring

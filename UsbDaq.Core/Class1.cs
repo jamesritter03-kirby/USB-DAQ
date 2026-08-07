@@ -29,10 +29,43 @@ public interface IPressureDevice : IAsyncDisposable
 	Task<PressureReading> ReadAsync(CancellationToken cancellationToken = default);
 }
 
+public sealed record SerialProtocolDefinition(
+    string Name,
+    int BaudRate,
+    string NewLine,
+    string? RequestTemplate,
+    string ValuePattern = @"[+\-]?[\d]*\.?[\d]+")
+{
+    // {station} in RequestTemplate is replaced with the 3-digit station address
+    public static readonly SerialProtocolDefinition Gp50Poll = new(
+        "GP50 ASCII — Poll", 115200, "\r", "!{station}:SYS?\r");
+
+    public static readonly SerialProtocolDefinition Gp50Stream = new(
+        "GP50 ASCII — Stream (STN=998)", 115200, "\r", null);
+
+    public static readonly SerialProtocolDefinition RawAsciiLf = new(
+        "Raw ASCII — LF-terminated", 9600, "\n", null);
+
+    public static readonly SerialProtocolDefinition RawAsciiCr = new(
+        "Raw ASCII — CR-terminated", 9600, "\r", null);
+
+    public static IReadOnlyList<SerialProtocolDefinition> Presets { get; } =
+        [Gp50Poll, Gp50Stream, RawAsciiLf, RawAsciiCr];
+
+    public string DisplayNewLine => NewLine switch
+    {
+        "\r" => "\\r (CR)",
+        "\n" => "\\n (LF)",
+        "\r\n" => "\\r\\n (CRLF)",
+        _ => NewLine
+    };
+}
+
 public interface IPressureDeviceFactory
 {
 	Task<IReadOnlyList<DeviceDescriptor>> DiscoverAsync(CancellationToken cancellationToken = default);
-	IPressureDevice Create(DeviceDescriptor descriptor, SensorSpecification spec);
+	IPressureDevice Create(DeviceDescriptor descriptor, SensorSpecification spec,
+	    SerialProtocolDefinition? protocol = null, int stationNumber = 1);
 }
 
 public static class PressureConversion

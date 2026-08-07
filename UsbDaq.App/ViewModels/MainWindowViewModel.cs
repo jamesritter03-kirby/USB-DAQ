@@ -7,9 +7,12 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using UsbDaq.App.Models;
+using UsbDaq.App.Streaming;
 using UsbDaq.Core;
 
 namespace UsbDaq.App.ViewModels;
@@ -42,6 +45,47 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _graphMode = "Sliding Window";
     private bool _graphAutoFollow = true;
     private bool _showPointMarkers;
+    private bool _showLegend = true;
+    private bool _showCursors = true;
+    private bool _showAlarmLines = true;
+    private SerialProtocolDefinition _defaultProtocol = SerialProtocolDefinition.Gp50Poll;
+    private string _customProtocolName = "My Protocol";
+    private string _customProtocolBaud = "9600";
+    private string _customProtocolRequest = string.Empty;
+    private string _customProtocolTerminator = "LF";
+    private string _customProtocolPattern = @"[+\-]?[\d]*\.?[\d]+";
+    private bool _stackedPlots;
+    private bool _cursorSnapToData;
+    private int _historyDurationSecs = 120;
+
+    // MQTT streaming config
+    private bool _mqttEnabled;
+    private string _mqttHost = "localhost";
+    private string _mqttPort = "1883";
+    private string _mqttTopic = "daq/{channel}";
+    private string _mqttUsername = "";
+    private string _mqttPassword = "";
+    private int _mqttPublishIntervalMs;
+    private MqttStreaming? _mqttTarget;
+
+    // Redis streaming config
+    private bool _redisEnabled;
+    private string _redisConnStr = "localhost:6379";
+    private string _redisKey = "daq:{channel}";
+    private bool _redisStream;
+    private int _redisPublishIntervalMs;
+    private int _redisExpirySeconds;
+    private RedisStreaming? _redisTarget;
+
+    // ThingsBoard streaming config
+    private bool _tbEnabled;
+    private string _tbHost = "demo.thingsboard.io";
+    private bool _tbHttps = true;
+    private string _tbToken = "";
+    private string _tbKeyTemplate = "{channel}";
+    private string _tbPathPrefix = "";
+    private int _tbPublishIntervalMs;
+    private ThingsBoardStreaming? _tbTarget;
 
     public MainWindowViewModel()
     {
@@ -54,6 +98,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         GraphModes = new ObservableCollection<string>(new[] { "Sliding Window", "Strip Chart" });
 
         RecordFilePath = Path.Combine(Environment.CurrentDirectory, "captures", $"daq_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+        Channels.CollectionChanged += (_, _) => OnPropertyChanged(nameof(AcquisitionStatusLabel));
+
+        AvailableProtocols = new ObservableCollection<SerialProtocolDefinition>(SerialProtocolDefinition.Presets);
+        TerminatorOptions = new ObservableCollection<string> { "CR", "LF", "CRLF" };
+        RefreshProfileNames();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -65,6 +114,381 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<string> ThemeModes { get; }
 
     public ObservableCollection<string> GraphModes { get; }
+
+    public ObservableCollection<SerialProtocolDefinition> AvailableProtocols { get; }
+
+    public ObservableCollection<string> TerminatorOptions { get; }
+
+    public SerialProtocolDefinition DefaultProtocol
+    {
+        get => _defaultProtocol;
+        set => SetField(ref _defaultProtocol, value);
+    }
+
+    // Custom protocol builder fields
+    public string CustomProtocolName
+    {
+        get => _customProtocolName;
+        set => SetField(ref _customProtocolName, value);
+    }
+
+    public string CustomProtocolBaud
+    {
+        get => _customProtocolBaud;
+        set => SetField(ref _customProtocolBaud, value);
+    }
+
+    public string CustomProtocolRequest
+    {
+        get => _customProtocolRequest;
+        set => SetField(ref _customProtocolRequest, value);
+    }
+
+    public string CustomProtocolTerminator
+    {
+        get => _customProtocolTerminator;
+        set => SetField(ref _customProtocolTerminator, value);
+    }
+
+    public string CustomProtocolPattern
+    {
+        get => _customProtocolPattern;
+        set => SetField(ref _customProtocolPattern, value);
+    }
+
+    public bool StackedPlots
+    {
+        get => _stackedPlots;
+        set => SetField(ref _stackedPlots, value);
+    }
+
+    public bool CursorSnapToData
+    {
+        get => _cursorSnapToData;
+        set => SetField(ref _cursorSnapToData, value);
+    }
+
+    public int HistoryDurationSecs
+    {
+        get => _historyDurationSecs;
+        set => SetField(ref _historyDurationSecs, Math.Clamp(value, 10, 3600));
+    }
+
+    // Ring buffer depth computed from history duration + current sample rate
+    private int MaxSamples => Math.Max(60, (int)(_historyDurationSecs * 1000.0 / Math.Max(1, _sampleIntervalMs)));
+
+    // ── MQTT ──
+    public bool MqttEnabled { get => _mqttEnabled; set => SetField(ref _mqttEnabled, value); }
+    public string MqttHost { get => _mqttHost; set => SetField(ref _mqttHost, value); }
+    public string MqttPort { get => _mqttPort; set => SetField(ref _mqttPort, value); }
+    public string MqttTopic { get => _mqttTopic; set => SetField(ref _mqttTopic, value); }
+    public string MqttUsername { get => _mqttUsername; set => SetField(ref _mqttUsername, value); }
+    public string MqttPassword { get => _mqttPassword; set => SetField(ref _mqttPassword, value); }
+    public int MqttPublishIntervalMs { get => _mqttPublishIntervalMs; set => SetField(ref _mqttPublishIntervalMs, Math.Max(0, value)); }
+    public bool MqttConnected => _mqttTarget?.IsConnected ?? false;
+
+    public async Task ConnectMqttAsync()
+    {
+        try
+        {
+            if (_mqttTarget is not null) await _mqttTarget.DisposeAsync();
+            if (!int.TryParse(_mqttPort, out var port)) port = 1883;
+            _mqttTarget = new MqttStreaming(_mqttHost, port, _mqttTopic,
+                string.IsNullOrWhiteSpace(_mqttUsername) ? null : _mqttUsername,
+                string.IsNullOrWhiteSpace(_mqttPassword) ? null : _mqttPassword);
+            await _mqttTarget.ConnectAsync();
+            OnPropertyChanged(nameof(MqttConnected));
+            Status = "MQTT connected.";
+        }
+        catch (Exception ex) { Status = $"MQTT error: {ex.Message}"; }
+    }
+
+    public async Task DisconnectMqttAsync()
+    {
+        if (_mqttTarget is not null) { await _mqttTarget.DisconnectAsync(); OnPropertyChanged(nameof(MqttConnected)); }
+        Status = "MQTT disconnected.";
+    }
+
+    // ── Redis ──
+    public bool RedisEnabled { get => _redisEnabled; set => SetField(ref _redisEnabled, value); }
+    public string RedisConnStr { get => _redisConnStr; set => SetField(ref _redisConnStr, value); }
+    public string RedisKey { get => _redisKey; set => SetField(ref _redisKey, value); }
+    public bool RedisStream { get => _redisStream; set => SetField(ref _redisStream, value); }
+    public int RedisPublishIntervalMs { get => _redisPublishIntervalMs; set => SetField(ref _redisPublishIntervalMs, Math.Max(0, value)); }
+    public int RedisExpirySeconds { get => _redisExpirySeconds; set => SetField(ref _redisExpirySeconds, Math.Max(0, value)); }
+    public bool RedisConnected => _redisTarget?.IsConnected ?? false;
+
+    public async Task ConnectRedisAsync()
+    {
+        try
+        {
+            if (_redisTarget is not null) await _redisTarget.DisposeAsync();
+            _redisTarget = new RedisStreaming(_redisConnStr, _redisKey, _redisStream, _redisExpirySeconds);
+            await _redisTarget.ConnectAsync();
+            OnPropertyChanged(nameof(RedisConnected));
+            Status = "Redis connected.";
+        }
+        catch (Exception ex) { Status = $"Redis error: {ex.Message}"; }
+    }
+
+    public async Task DisconnectRedisAsync()
+    {
+        if (_redisTarget is not null) { await _redisTarget.DisconnectAsync(); OnPropertyChanged(nameof(RedisConnected)); }
+        Status = "Redis disconnected.";
+    }
+
+    // ── ThingsBoard ──
+    public bool TbEnabled { get => _tbEnabled; set => SetField(ref _tbEnabled, value); }
+    public string TbHost
+    {
+        get => _tbHost;
+        set { if (SetField(ref _tbHost, value)) OnPropertyChanged(nameof(TbPreviewUrl)); }
+    }
+    public bool TbHttps
+    {
+        get => _tbHttps;
+        set { if (SetField(ref _tbHttps, value)) OnPropertyChanged(nameof(TbPreviewUrl)); }
+    }
+    public string TbToken
+    {
+        get => _tbToken;
+        set { if (SetField(ref _tbToken, value)) OnPropertyChanged(nameof(TbPreviewUrl)); }
+    }
+    public string TbKeyTemplate { get => _tbKeyTemplate; set => SetField(ref _tbKeyTemplate, value); }
+    public string TbPathPrefix
+    {
+        get => _tbPathPrefix;
+        set { if (SetField(ref _tbPathPrefix, value)) OnPropertyChanged(nameof(TbPreviewUrl)); }
+    }
+    public int TbPublishIntervalMs { get => _tbPublishIntervalMs; set => SetField(ref _tbPublishIntervalMs, Math.Max(0, value)); }
+    public bool TbConnected => _tbTarget?.IsConnected ?? false;
+
+    // Shows the exact URL that will be called
+    public string TbPreviewUrl =>
+        $"{(_tbHttps ? "https" : "http")}://{_tbHost}{_tbPathPrefix.TrimEnd('/')}/api/v1/{{token}}/telemetry";
+
+    public async Task ConnectThingsBoardAsync()
+    {
+        try
+        {
+            if (_tbTarget is not null) await _tbTarget.DisposeAsync();
+            _tbTarget = new ThingsBoardStreaming(_tbHost, _tbHttps, _tbToken, _tbPathPrefix);
+            await _tbTarget.ConnectAsync();
+            OnPropertyChanged(nameof(TbConnected));
+            Status = "ThingsBoard connected.";
+        }
+        catch (Exception ex) { Status = $"ThingsBoard error: {ex.Message}"; }
+    }
+
+    public async Task DisconnectThingsBoardAsync()
+    {
+        if (_tbTarget is not null) { await _tbTarget.DisconnectAsync(); OnPropertyChanged(nameof(TbConnected)); }
+        Status = "ThingsBoard disconnected.";
+    }
+
+    // ── Profiles ─────────────────────────────────────────────
+
+    private static readonly string ProfilesDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UsbDaq", "profiles");
+
+    private string _newProfileName = "Default";
+
+    public ObservableCollection<string> SavedProfileNames { get; } = new();
+
+    public string NewProfileName
+    {
+        get => _newProfileName;
+        set => SetField(ref _newProfileName, value);
+    }
+
+    public void RefreshProfileNames()
+    {
+        SavedProfileNames.Clear();
+        if (!Directory.Exists(ProfilesDir)) return;
+        foreach (var f in Directory.GetFiles(ProfilesDir, "*.json").OrderBy(x => x))
+        {
+            var name = Path.GetFileNameWithoutExtension(f);
+            if (!name.StartsWith("_")) // hide internal auto-save profiles
+                SavedProfileNames.Add(name);
+        }
+    }
+
+    public async Task SaveProfileAsync(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) { Status = "Profile name cannot be empty."; return; }
+        Directory.CreateDirectory(ProfilesDir);
+        var profile = new DaqProfile
+        {
+            Name = name,
+            Created = DateTime.Now,
+            SampleIntervalMs = SampleIntervalMs,
+            HistoryDurationSecs = HistoryDurationSecs,
+            LowAlarmPsig = LowAlarmPsig,
+            HighAlarmPsig = HighAlarmPsig,
+            GraphMode = GraphMode,
+            StackedPlots = StackedPlots,
+            ShowLegend = ShowLegend,
+            ShowCursors = ShowCursors,
+            ShowAlarmLines = ShowAlarmLines,
+            CursorSnapToData = CursorSnapToData,
+            ShowPointMarkers = ShowPointMarkers,
+            GraphAutoFollow = GraphAutoFollow,
+            MqttHost = MqttHost, MqttPort = MqttPort, MqttTopic = MqttTopic,
+            MqttUsername = MqttUsername, MqttPassword = MqttPassword, MqttPublishIntervalMs = MqttPublishIntervalMs,
+            RedisConnStr = RedisConnStr, RedisKey = RedisKey, RedisStream = RedisStream, RedisPublishIntervalMs = RedisPublishIntervalMs, RedisExpirySeconds = RedisExpirySeconds,
+            TbHost = TbHost, TbHttps = TbHttps, TbToken = TbToken, TbKeyTemplate = TbKeyTemplate, TbPathPrefix = TbPathPrefix, TbPublishIntervalMs = TbPublishIntervalMs,
+            DefaultProtocolName = DefaultProtocol.Name,
+            Channels = Channels.Select(c => new ChannelEntry
+            {
+                DeviceId = c.Descriptor.Id,
+                DeviceDisplayName = c.Descriptor.DisplayName,
+                DeviceTransport = c.Descriptor.Transport,
+                SignalName = c.SignalName,
+                ColorHex = c.ColorHex,
+                ProtocolName = c.Protocol.Name,
+                StationNumber = c.StationNumber,
+                IsVisible = c.IsVisible,
+                MqttTopicOverride = c.MqttTopicOverride,
+                RedisKeyOverride = c.RedisKeyOverride,
+                TbKeyOverride = c.TbKeyOverride,
+                TbTokenOverride = c.TbTokenOverride,
+            }).ToList()
+        };
+        var json = JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(Path.Combine(ProfilesDir, $"{name}.json"), json);
+        RefreshProfileNames();
+        NewProfileName = name;
+        Status = $"Profile '{name}' saved.";
+    }
+
+    public async Task LoadProfileAsync(string name)
+    {
+        var file = Path.Combine(ProfilesDir, $"{name}.json");
+        if (!File.Exists(file)) { Status = $"Profile '{name}' not found."; return; }
+        var json = await File.ReadAllTextAsync(file);
+        var p = JsonSerializer.Deserialize<DaqProfile>(json);
+        if (p is null) return;
+
+        SampleIntervalMs = p.SampleIntervalMs;
+        HistoryDurationSecs = p.HistoryDurationSecs;
+        LowAlarmPsig = p.LowAlarmPsig;
+        HighAlarmPsig = p.HighAlarmPsig;
+        GraphMode = p.GraphMode;
+        StackedPlots = p.StackedPlots;
+        ShowLegend = p.ShowLegend;
+        ShowCursors = p.ShowCursors;
+        ShowAlarmLines = p.ShowAlarmLines;
+        CursorSnapToData = p.CursorSnapToData;
+        ShowPointMarkers = p.ShowPointMarkers;
+        GraphAutoFollow = p.GraphAutoFollow;
+        MqttHost = p.MqttHost; MqttPort = p.MqttPort; MqttTopic = p.MqttTopic;
+        MqttUsername = p.MqttUsername; MqttPassword = p.MqttPassword; MqttPublishIntervalMs = p.MqttPublishIntervalMs;
+        RedisConnStr = p.RedisConnStr; RedisKey = p.RedisKey; RedisStream = p.RedisStream; RedisPublishIntervalMs = p.RedisPublishIntervalMs; RedisExpirySeconds = p.RedisExpirySeconds;
+        TbHost = p.TbHost; TbHttps = p.TbHttps; TbToken = p.TbToken; TbKeyTemplate = p.TbKeyTemplate; TbPathPrefix = p.TbPathPrefix; TbPublishIntervalMs = p.TbPublishIntervalMs;
+        DefaultProtocol = AvailableProtocols.FirstOrDefault(x => x.Name == p.DefaultProtocolName)
+            ?? SerialProtocolDefinition.Gp50Poll;
+
+        if (!IsAcquiring)
+        {
+            foreach (var ch in Channels.ToList())
+                await RemoveChannelAsync(ch);
+            foreach (var entry in p.Channels)
+            {
+                var desc = new DeviceDescriptor(entry.DeviceId, entry.DeviceDisplayName, entry.DeviceTransport);
+                var proto = AvailableProtocols.FirstOrDefault(x => x.Name == entry.ProtocolName) ?? DefaultProtocol;
+                var channel = new DeviceChannelViewModel(desc, _sensorSpec, entry.ColorHex, proto, entry.StationNumber)
+                {
+                    SignalName = entry.SignalName,
+                    IsVisible = entry.IsVisible,
+                    MqttTopicOverride = entry.MqttTopicOverride,
+                    RedisKeyOverride = entry.RedisKeyOverride,
+                    TbKeyOverride = entry.TbKeyOverride,
+                    TbTokenOverride = entry.TbTokenOverride,
+                    Status = "From profile"
+                };
+                Channels.Add(channel);
+            }
+        }
+        NewProfileName = name;
+        Status = $"Profile '{name}' loaded.";
+    }
+
+    public Task DeleteProfileAsync(string name)
+    {
+        var file = Path.Combine(ProfilesDir, $"{name}.json");
+        if (File.Exists(file)) File.Delete(file);
+        RefreshProfileNames();
+        if (NewProfileName == name) NewProfileName = "Default";
+        Status = $"Profile '{name}' deleted.";
+        return Task.CompletedTask;
+    }
+
+    // Saves the current state as the last session (auto-loaded on next startup)
+    public async Task SaveSessionAsync()
+    {
+        try { await SaveProfileAsync("_last_session"); }
+        catch { /* never fail app close */ }
+    }
+
+    // Loads the last session if one was saved
+    public async Task LoadLastSessionAsync()
+    {
+        var file = Path.Combine(ProfilesDir, "_last_session.json");
+        if (!File.Exists(file)) return;
+        try { await LoadProfileAsync("_last_session"); }
+        catch { /* ignore corrupt session file */ }
+    }
+
+    public void SaveCustomProtocol()
+    {
+        var name = CustomProtocolName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            Status = "Protocol name cannot be empty.";
+            return;
+        }
+
+        if (!int.TryParse(CustomProtocolBaud, out var baud) || baud <= 0)
+        {
+            Status = "Invalid baud rate.";
+            return;
+        }
+
+        var newLine = CustomProtocolTerminator switch
+        {
+            "CR" => "\r",
+            "CRLF" => "\r\n",
+            _ => "\n"
+        };
+
+        // Convert user-visible escape sequences to real chars in request template
+        var request = string.IsNullOrWhiteSpace(CustomProtocolRequest)
+            ? null
+            : CustomProtocolRequest.Replace("\\r", "\r").Replace("\\n", "\n");
+
+        var pattern = string.IsNullOrWhiteSpace(CustomProtocolPattern)
+            ? SerialProtocolDefinition.Gp50Poll.ValuePattern
+            : CustomProtocolPattern.Trim();
+
+        var protocol = new SerialProtocolDefinition(name, baud, newLine, request, pattern);
+        AvailableProtocols.Add(protocol);
+        DefaultProtocol = protocol;
+        Status = $"Protocol '{name}' saved.";
+    }
+
+    public void RemoveProtocol(SerialProtocolDefinition protocol)
+    {
+        if (SerialProtocolDefinition.Presets.Contains(protocol))
+        {
+            Status = "Built-in protocols cannot be removed.";
+            return;
+        }
+
+        AvailableProtocols.Remove(protocol);
+        if (DefaultProtocol == protocol)
+            DefaultProtocol = SerialProtocolDefinition.Gp50Poll;
+        Status = $"Protocol '{protocol.Name}' removed.";
+    }
 
     public DeviceDescriptor? SelectedAvailableDevice
     {
@@ -110,6 +534,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(CanAddChannel));
                 OnPropertyChanged(nameof(CanStartAcquisition));
                 OnPropertyChanged(nameof(CanStopAcquisition));
+                OnPropertyChanged(nameof(AcquisitionStatusLabel));
             }
         }
     }
@@ -123,9 +548,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 OnPropertyChanged(nameof(CanStartAcquisition));
                 OnPropertyChanged(nameof(CanStopAcquisition));
+                OnPropertyChanged(nameof(AcquisitionStatusLabel));
+                OnPropertyChanged(nameof(IsNotAcquiring));
             }
         }
     }
+
+    public bool IsNotAcquiring => !IsAcquiring;
 
     public bool IsRecording
     {
@@ -136,7 +565,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string Status
     {
         get => _status;
-        private set => SetField(ref _status, value);
+        set => SetField(ref _status, value);
     }
 
     public int SampleIntervalMs
@@ -199,6 +628,35 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         set => SetField(ref _showPointMarkers, value);
     }
 
+    public bool ShowLegend
+    {
+        get => _showLegend;
+        set => SetField(ref _showLegend, value);
+    }
+
+    public bool ShowCursors
+    {
+        get => _showCursors;
+        set => SetField(ref _showCursors, value);
+    }
+
+    public bool ShowAlarmLines
+    {
+        get => _showAlarmLines;
+        set => SetField(ref _showAlarmLines, value);
+    }
+
+    public string AcquisitionStatusLabel
+    {
+        get
+        {
+            if (IsAcquiring)
+                return $"Live — {Channels.Count(c => c.IsAcquiring)} ch";
+            var connected = Channels.Count(c => c.IsConnected);
+            return connected > 0 ? $"{connected} connected" : "Idle";
+        }
+    }
+
     public bool HasSelectedChannel => SelectedChannel is not null;
 
     public bool CanAddChannel => !IsBusy && SelectedAvailableDevice is not null;
@@ -256,7 +714,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             : SelectedAvailableDevice;
 
         var color = Palette[Channels.Count % Palette.Length];
-        var channel = new DeviceChannelViewModel(descriptor, _sensorSpec, color)
+        var channel = new DeviceChannelViewModel(descriptor, _sensorSpec, color, _defaultProtocol)
         {
             Status = "Added"
         };
@@ -283,19 +741,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public async Task RemoveSelectedChannelAsync(CancellationToken cancellationToken = default)
     {
-        var channel = SelectedChannel;
-        if (channel is null)
-        {
-            return;
-        }
+        if (SelectedChannel is not null)
+            await RemoveChannelAsync(SelectedChannel, cancellationToken);
+    }
 
+    public async Task RemoveChannelAsync(DeviceChannelViewModel channel, CancellationToken cancellationToken = default)
+    {
         if (channel.IsConnected)
-        {
             await DisconnectChannelAsync(channel, cancellationToken);
-        }
 
         Channels.Remove(channel);
-        SelectedChannel = Channels.FirstOrDefault();
+        if (SelectedChannel == channel)
+            SelectedChannel = Channels.FirstOrDefault();
         Status = "Channel removed.";
     }
 
@@ -440,7 +897,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Status = "Samples cleared.";
     }
 
-    private async Task ConnectChannelAsync(DeviceChannelViewModel channel, CancellationToken cancellationToken)
+    public async Task ConnectChannelAsync(DeviceChannelViewModel channel, CancellationToken cancellationToken = default)
     {
         if (channel.IsConnected)
         {
@@ -450,7 +907,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         IsBusy = true;
         try
         {
-            var device = _factory.Create(channel.Descriptor, _sensorSpec);
+            var device = _factory.Create(channel.Descriptor, _sensorSpec, channel.Protocol, channel.StationNumber);
             await device.ConnectAsync(cancellationToken);
             channel.Attach(device);
             channel.IsConnected = true;
@@ -471,7 +928,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task DisconnectChannelAsync(DeviceChannelViewModel channel, CancellationToken cancellationToken)
+    public async Task DisconnectChannelAsync(DeviceChannelViewModel channel, CancellationToken cancellationToken = default)
     {
         var device = channel.GetDevice();
         if (device is null)
@@ -519,7 +976,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 var reading = await device.ReadAsync(token);
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    channel.AddSample(reading);
+                    channel.AddSample(reading, MaxSamples);
                     channel.IsAlarm = reading.PressurePsig < LowAlarmPsig || reading.PressurePsig > HighAlarmPsig;
                     UpdateAggregates();
                 });
@@ -527,6 +984,45 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 if (IsRecording)
                 {
                     await AppendRecordAsync(channel, reading, token);
+                }
+
+                // Publish to enabled streaming targets with per-channel key overrides and rate limiting
+                var now = reading.Timestamp;
+                if (_mqttTarget?.IsConnected == true &&
+                    (_mqttPublishIntervalMs <= 0 || (now - channel.MqttLastPublished).TotalMilliseconds >= _mqttPublishIntervalMs))
+                {
+                    channel.MqttLastPublished = now;
+                    var key = string.IsNullOrWhiteSpace(channel.MqttTopicOverride)
+                        ? _mqttTopic.Replace("{channel}", channel.DisplayName)
+                        : channel.MqttTopicOverride;
+                    try { await _mqttTarget.PublishAsync(key, reading.PressurePsig, reading.Timestamp, token); }
+                    catch { /* best-effort */ }
+                }
+                if (_redisTarget?.IsConnected == true &&
+                    (_redisPublishIntervalMs <= 0 || (now - channel.RedisLastPublished).TotalMilliseconds >= _redisPublishIntervalMs))
+                {
+                    channel.RedisLastPublished = now;
+                    var key = string.IsNullOrWhiteSpace(channel.RedisKeyOverride)
+                        ? _redisKey.Replace("{channel}", channel.DisplayName)
+                        : channel.RedisKeyOverride;
+                    try { await _redisTarget.PublishAsync(key, reading.PressurePsig, reading.Timestamp, token); }
+                    catch { /* best-effort */ }
+                }
+                if (_tbTarget?.IsConnected == true &&
+                    (_tbPublishIntervalMs <= 0 || (now - channel.TbLastPublished).TotalMilliseconds >= _tbPublishIntervalMs))
+                {
+                    channel.TbLastPublished = now;
+                    var key = string.IsNullOrWhiteSpace(channel.TbKeyOverride)
+                        ? _tbKeyTemplate.Replace("{channel}", channel.DisplayName)
+                        : channel.TbKeyOverride;
+                    try
+                    {
+                        if (!string.IsNullOrWhiteSpace(channel.TbTokenOverride))
+                            await _tbTarget.PublishToTokenAsync(channel.TbTokenOverride, key, reading.PressurePsig, reading.Timestamp, token);
+                        else
+                            await _tbTarget.PublishAsync(key, reading.PressurePsig, reading.Timestamp, token);
+                    }
+                    catch { /* best-effort */ }
                 }
             }
             catch (TaskCanceledException)

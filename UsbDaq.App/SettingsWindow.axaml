@@ -1,0 +1,245 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="UsbDaq.App.SettingsWindow"
+        x:CompileBindings="False"
+        Title="Settings"
+        Width="500"
+        Height="560"
+        CanResize="True"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="*,Auto" Margin="16,14,16,16">
+        <TabControl Grid.Row="0">
+
+            <!-- ── Acquisition ── -->
+            <TabItem Header="Acquisition">
+                <ScrollViewer Margin="0,8,0,0">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnDefinitions="*,110" ColumnSpacing="8">
+                            <TextBlock Grid.Column="0" Text="Sample Interval (ms)" VerticalAlignment="Center" FontSize="13"/>
+                            <TextBox Grid.Column="1" Text="{Binding SampleIntervalMs}" FontSize="13"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,110" ColumnSpacing="8">
+                            <TextBlock Grid.Column="0" Text="History (seconds)" VerticalAlignment="Center" FontSize="13"
+                                       ToolTip.Tip="Ring buffer size per channel"/>
+                            <TextBox Grid.Column="1" Text="{Binding HistoryDurationSecs}" FontSize="13"/>
+                        </Grid>
+                        <Separator Margin="0,4"/>
+                        <Grid ColumnDefinitions="*,110" ColumnSpacing="8">
+                            <TextBlock Grid.Column="0" Text="Low Alarm (psig)" VerticalAlignment="Center" FontSize="13"/>
+                            <TextBox Grid.Column="1" Text="{Binding LowAlarmPsig}" FontSize="13"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,110" ColumnSpacing="8">
+                            <TextBlock Grid.Column="0" Text="High Alarm (psig)" VerticalAlignment="Center" FontSize="13"/>
+                            <TextBox Grid.Column="1" Text="{Binding HighAlarmPsig}" FontSize="13"/>
+                        </Grid>
+                        <Separator Margin="0,4"/>
+                        <CheckBox Content="Record to CSV" IsChecked="{Binding IsRecording}" FontSize="13"/>
+                        <TextBox Text="{Binding RecordFilePath}" FontSize="12"
+                                 Watermark="Output file path…"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ── Protocol ── -->
+            <TabItem Header="Protocol">
+                <ScrollViewer Margin="0,8,0,0">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Default Protocol (new channels)" FontSize="12"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <ComboBox ItemsSource="{Binding AvailableProtocols}"
+                                  SelectedItem="{Binding DefaultProtocol}"
+                                  HorizontalAlignment="Stretch" FontSize="13">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Separator Margin="0,4"/>
+                        <Expander Header="Custom Protocol Builder" IsExpanded="False">
+                            <StackPanel Spacing="7" Margin="0,8,0,0">
+                                <Grid ColumnDefinitions="*,110" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Name" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBox Grid.Column="1" Text="{Binding CustomProtocolName}" FontSize="12"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,110" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Baud Rate" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBox Grid.Column="1" Text="{Binding CustomProtocolBaud}" FontSize="12"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,110" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Terminator" VerticalAlignment="Center" FontSize="12"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding TerminatorOptions}"
+                                              SelectedItem="{Binding CustomProtocolTerminator}" FontSize="12"/>
+                                </Grid>
+                                <StackPanel Spacing="3">
+                                    <TextBlock Text="Poll Command (blank = passive stream)" FontSize="11"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                    <TextBox Text="{Binding CustomProtocolRequest}" FontSize="12"
+                                             Watermark="e.g. !{station}:SYS?\r"/>
+                                </StackPanel>
+                                <StackPanel Spacing="3">
+                                    <TextBlock Text="Value Regex" FontSize="11"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                    <TextBox Text="{Binding CustomProtocolPattern}" FontSize="12"/>
+                                </StackPanel>
+                                <Button Content="Save Protocol" Click="SaveCustomProtocol_Click"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,6"/>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ── Streaming ── -->
+            <TabItem Header="Streaming">
+                <ScrollViewer Margin="0,8,0,0">
+                    <StackPanel Spacing="10">
+
+                        <!-- MQTT -->
+                        <Expander Header="MQTT" IsExpanded="False">
+                            <StackPanel Spacing="7" Margin="0,8,0,0">
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Host" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBox Grid.Column="1" Text="{Binding MqttHost}" FontSize="12"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Port" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBox Grid.Column="1" Text="{Binding MqttPort}" FontSize="12"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Topic Template  {channel}" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBox Grid.Column="1" Text="{Binding MqttTopic}" FontSize="12"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Username (opt.)" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBox Grid.Column="1" Text="{Binding MqttUsername}" FontSize="12"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Password (opt.)" VerticalAlignment="Center" FontSize="12"
+                                               ToolTip.Tip="Stored in plain text in profiles"/>
+                                    <TextBox Grid.Column="1" Text="{Binding MqttPassword}" FontSize="12"
+                                             PasswordChar="●"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Publish Interval (ms)" VerticalAlignment="Center" FontSize="12"
+                                               ToolTip.Tip="0 = publish every sample. E.g. 1000 = at most once per second per channel."/>
+                                    <TextBox Grid.Column="1" Text="{Binding MqttPublishIntervalMs}" FontSize="12" Watermark="0 = every sample"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Button Grid.Column="0" Content="Connect" Click="MqttConnect_Click"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5"/>
+                                    <Button Grid.Column="1" Content="Disconnect" Click="MqttDisconnect_Click" Padding="8,5"/>
+                                </Grid>
+                                <TextBlock Text="{Binding MqttConnected, StringFormat='Connected: {0}'}" FontSize="11"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- Redis -->
+                        <Expander Header="Redis" IsExpanded="False">
+                            <StackPanel Spacing="7" Margin="0,8,0,0">
+                                <StackPanel Spacing="3">
+                                    <TextBlock Text="Connection String" FontSize="11"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                    <TextBox Text="{Binding RedisConnStr}" FontSize="12" Watermark="localhost:6379"/>
+                                </StackPanel>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Key Template  {channel}" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBox Grid.Column="1" Text="{Binding RedisKey}" FontSize="12"/>
+                                </Grid>
+                                <CheckBox Content="Use Stream (XADD)" IsChecked="{Binding RedisStream}" FontSize="12"/>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Publish Interval (ms)" VerticalAlignment="Center" FontSize="12"
+                                               ToolTip.Tip="0 = publish every sample."/>
+                                    <TextBox Grid.Column="1" Text="{Binding RedisPublishIntervalMs}" FontSize="12" Watermark="0 = every sample"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Key Expiry (seconds)" VerticalAlignment="Center" FontSize="12"
+                                               ToolTip.Tip="SET mode only: TTL in seconds. 0 = no expiry."/>
+                                    <TextBox Grid.Column="1" Text="{Binding RedisExpirySeconds}" FontSize="12" Watermark="0 = no expiry"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Button Grid.Column="0" Content="Connect" Click="RedisConnect_Click"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5"/>
+                                    <Button Grid.Column="1" Content="Disconnect" Click="RedisDisconnect_Click" Padding="8,5"/>
+                                </Grid>
+                                <TextBlock Text="{Binding RedisConnected, StringFormat='Connected: {0}'}" FontSize="11"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- ThingsBoard -->
+                        <Expander Header="ThingsBoard" IsExpanded="False">
+                            <StackPanel Spacing="7" Margin="0,8,0,0">
+                                <Border Padding="10,8" CornerRadius="5"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="How ThingsBoard routing works:" FontSize="11" FontWeight="SemiBold"/>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Text="• The Access Token below identifies the ThingsBoard DEVICE that receives data."/>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Text="• The Key Template sets the telemetry metric name ({channel} = signal name)."/>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Text="• All channels share one device by default. To send a channel to a different device, open ⚙ on the channel card and set a TB Token override."/>
+                                    </StackPanel>
+                                </Border>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Host" VerticalAlignment="Center" FontSize="12"
+                                               ToolTip.Tip="Domain or IP only — the app appends /api/v1/{token}/telemetry"/>
+                                    <TextBox Grid.Column="1" Text="{Binding TbHost}" FontSize="12"
+                                             Watermark="e.g. demo.thingsboard.io"/>
+                                </Grid>
+                                <CheckBox Content="Use HTTPS" IsChecked="{Binding TbHttps}" FontSize="12"/>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Path Prefix (opt.)" VerticalAlignment="Center" FontSize="12"
+                                               ToolTip.Tip="Leave blank for standard ThingsBoard. Add e.g. /tb if your instance has a sub-path."/>
+                                    <TextBox Grid.Column="1" Text="{Binding TbPathPrefix}" FontSize="12"
+                                             Watermark="blank = standard"/>
+                                </Grid>
+                                <!-- Live URL preview so user can verify the exact endpoint -->
+                                <Border Padding="8,6" CornerRadius="4"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Will connect to:" FontSize="10"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                        <TextBlock Text="{Binding TbPreviewUrl}" FontSize="11"
+                                                   FontFamily="Consolas,Courier New,monospace"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel Spacing="3">
+                                    <TextBlock Text="Device Access Token" FontSize="11"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                    <TextBox Text="{Binding TbToken}" FontSize="12" Watermark="Access token…"/>
+                                </StackPanel>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Key Template  {channel}" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBox Grid.Column="1" Text="{Binding TbKeyTemplate}" FontSize="12"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+                                    <TextBlock Grid.Column="0" Text="Publish Interval (ms)" VerticalAlignment="Center" FontSize="12"
+                                               ToolTip.Tip="0 = publish every sample."/>
+                                    <TextBox Grid.Column="1" Text="{Binding TbPublishIntervalMs}" FontSize="12" Watermark="0 = every sample"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Button Grid.Column="0" Content="Connect" Click="TbConnect_Click"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5"/>
+                                    <Button Grid.Column="1" Content="Disconnect" Click="TbDisconnect_Click" Padding="8,5"/>
+                                </Grid>
+                                <TextBlock Text="{Binding TbConnected, StringFormat='Connected: {0}'}" FontSize="11"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                        </Expander>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+
+        <!-- Close -->
+        <Button Grid.Row="1" Content="Close" Click="CloseButton_Click"
+                HorizontalAlignment="Right" Margin="0,10,0,0" Padding="24,7"/>
+    </Grid>
+</Window>

@@ -21,7 +21,8 @@ public sealed class PressureDeviceFactory : IPressureDeviceFactory
         return Task.FromResult<IReadOnlyList<DeviceDescriptor>>(devices);
     }
 
-    public IPressureDevice Create(DeviceDescriptor descriptor, SensorSpecification spec)
+    public IPressureDevice Create(DeviceDescriptor descriptor, SensorSpecification spec,
+        SerialProtocolDefinition? protocol = null, int stationNumber = 1)
     {
         if (descriptor.Transport.Equals("Simulation", StringComparison.OrdinalIgnoreCase)
             || descriptor.Id.StartsWith(Simulated.Id, StringComparison.OrdinalIgnoreCase))
@@ -29,6 +30,6 @@ public sealed class PressureDeviceFactory : IPressureDeviceFactory
             return new SimulationPressureDevice(descriptor, spec);
         }
 
-        return new SerialLinePressureDevice(descriptor, spec);
+        return new SerialLinePressureDevice(descriptor, spec, protocol, stationNumber);
     }
 }

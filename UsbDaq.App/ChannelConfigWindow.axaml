@@ -1,0 +1,167 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="UsbDaq.App.ChannelConfigWindow"
+        x:CompileBindings="False"
+        Title="Channel Configuration"
+        Width="400"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="*,Auto" Margin="20,18,20,18">
+        <StackPanel Grid.Row="0" Spacing="20">
+
+            <!-- ── Signal Name ── -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="SIGNAL NAME" FontSize="10" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBox Text="{Binding Channel.SignalName}" FontSize="13"/>
+            </StackPanel>
+
+            <!-- ── Trace Color ── -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="TRACE COLOR" FontSize="10" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <Grid ColumnDefinitions="58,*" ColumnSpacing="14">
+                    <!-- Live color preview -->
+                    <Border Grid.Column="0" Height="54" CornerRadius="6"
+                            Background="{Binding Channel.TraceColor}"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
+                    <!-- Swatches -->
+                    <WrapPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Tag="#3B82F6" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#3B82F6" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#EF4444" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#EF4444" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#10B981" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#10B981" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#F59E0B" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#F59E0B" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#A855F7" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#A855F7" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#14B8A6" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#14B8A6" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#F97316" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#F97316" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#E11D48" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#E11D48" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#FFFFFF" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#FFFFFF" BorderThickness="1" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#94A3B8" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#94A3B8" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#0EA5E9" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#0EA5E9" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                        <Button Tag="#84CC16" Click="ColorSwatch_Click" Width="32" Height="32"
+                                Background="#84CC16" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
+                    </WrapPanel>
+                </Grid>
+            </StackPanel>
+
+            <!-- ── Protocol ── -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="PROTOCOL" FontSize="10" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+
+                <!-- Protocol selector -->
+                <ComboBox ItemsSource="{Binding AvailableProtocols}"
+                          SelectedItem="{Binding Channel.Protocol}"
+                          HorizontalAlignment="Stretch" FontSize="13"
+                          SelectionChanged="ProtocolCombo_SelectionChanged">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <!-- Station + baud side by side -->
+                <Grid ColumnDefinitions="*,16,*">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="Station Number" FontSize="11"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBox Text="{Binding Channel.StationNumber}" FontSize="12"
+                                 Watermark="1–999"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="4">
+                        <TextBlock Text="Baud Rate" FontSize="11"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Text="{Binding Channel.Protocol.BaudRate}" FontSize="13"
+                                   FontWeight="SemiBold" Margin="0,7,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Protocol info card -->
+                <Border Padding="12,10" CornerRadius="6"
+                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="12">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Terminator"
+                                   FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1"
+                                   Text="{Binding Channel.Protocol.DisplayNewLine}"
+                                   FontSize="11" FontFamily="Consolas,Courier New,monospace"
+                                   HorizontalAlignment="Right"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Mode"
+                                   FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="ModeText" Grid.Row="1" Grid.Column="1"
+                                   FontSize="11" HorizontalAlignment="Right"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Request"
+                                   FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="RequestText" Grid.Row="2" Grid.Column="1"
+                                   FontSize="11" FontFamily="Consolas,Courier New,monospace"
+                                   HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- ── Streaming Keys ── -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="STREAMING KEYS" FontSize="10" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBlock Text="Leave blank to use the global template. {channel} is substituted with this signal name."
+                           FontSize="10" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                           TextWrapping="Wrap"/>
+                <Grid ColumnDefinitions="86,*" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="MQTT Topic" VerticalAlignment="Center" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Channel.MqttTopicOverride}" FontSize="12"
+                             Watermark="e.g. sensors/pump1/pressure"/>
+                </Grid>
+                <Grid ColumnDefinitions="86,*" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="Redis Key" VerticalAlignment="Center" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Channel.RedisKeyOverride}" FontSize="12"
+                             Watermark="e.g. sensor:pump1:pressure"/>
+                </Grid>
+                <Separator Margin="0,2"/>
+                <!-- ThingsBoard: key = metric name on the device; token = which device -->
+                <TextBlock Text="ThingsBoard — the Key is the metric name; the Token routes to a specific device."
+                           FontSize="10" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                           TextWrapping="Wrap"/>
+                <Grid ColumnDefinitions="86,*" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="TB Key" VerticalAlignment="Center" FontSize="12"
+                               ToolTip.Tip="Telemetry key name on the ThingsBoard device"/>
+                    <TextBox Grid.Column="1" Text="{Binding Channel.TbKeyOverride}" FontSize="12"
+                             Watermark="e.g. pressure_psig"/>
+                </Grid>
+                <Grid ColumnDefinitions="86,*" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="TB Token" VerticalAlignment="Center" FontSize="12"
+                               ToolTip.Tip="Override: send this channel to a different ThingsBoard device"/>
+                    <TextBox Grid.Column="1" Text="{Binding Channel.TbTokenOverride}" FontSize="12"
+                             Watermark="Device access token (blank = use global)"/>
+                </Grid>
+            </StackPanel>
+
+        </StackPanel>
+
+        <!-- ── Buttons ── -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Spacing="8" Margin="0,20,0,0">
+            <Button Content="Cancel" Click="CancelButton_Click" Padding="22,7"/>
+            <Button Content="Apply" Click="ApplyButton_Click" Padding="22,7"/>
+        </StackPanel>
+    </Grid>
+</Window>
