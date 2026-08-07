@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -47,6 +48,40 @@ public sealed class UpdateChecker : IDisposable
                latest > current;
     }
 
+    // Runtime identifier of the current OS/architecture, matching the RIDs used
+    // when publishing releases (win-x64, linux-x64, osx-x64, osx-arm64).
+    public static string CurrentRid
+    {
+        get
+        {
+            var arch = RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "arm64" : "x64";
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return $"win-{arch}";
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return $"osx-{arch}";
+            return $"linux-{arch}";
+        }
+    }
+
+    // The published application executable file name for the current platform.
+    private static string AppExecutableName =>
+        RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "UsbDaq.App.exe" : "UsbDaq.App";
+
+    // Picks the release asset that matches the current platform, preferring the
+    // Windows one-click installer, then a platform-specific zip.
+    public static GitHubAsset? SelectAsset(GitHubRelease release)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            var installer = release.Assets.Find(a => a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+            if (installer is not null) return installer;
+        }
+
+        var rid = CurrentRid;
+        return release.Assets.Find(a =>
+                   a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
+                   a.Name.Contains(rid, StringComparison.OrdinalIgnoreCase))
+               ?? release.Assets.Find(a => a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+    }
+
     public async Task<string> DownloadAsync(string url, IProgress<int>? progress = null, CancellationToken ct = default)
     {
         var ext = url.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? ".exe" : ".zip";
@@ -67,8 +102,8 @@ public sealed class UpdateChecker : IDisposable
         return dest;
     }
 
-    // Runs the downloaded update. For a Setup.exe installer it launches a silent install;
-    // for a zip it swaps the exe via a bat script after this process exits.
+    // Runs the downloaded update. For a Windows Setup.exe installer it launches a silent
+    // install; for a zip it swaps the app in place via a helper script after this process exits.
     public static void ApplyUpdate(string downloadPath)
     {
         if (downloadPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -81,13 +116,22 @@ public sealed class UpdateChecker : IDisposable
         if (Directory.Exists(extractDir)) Directory.Delete(extractDir, true);
         ZipFile.ExtractToDirectory(downloadPath, extractDir);
 
-        var newExe = Path.Combine(extractDir, "app", "UsbDaq.App.exe");
+        var exeName = AppExecutableName;
+        var newExe = Path.Combine(extractDir, "app", exeName);
         if (!File.Exists(newExe))
-            newExe = Directory.GetFiles(extractDir, "UsbDaq.App.exe", SearchOption.AllDirectories)[0];
+            newExe = Directory.GetFiles(extractDir, exeName, SearchOption.AllDirectories)[0];
 
         var currentExe = System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName!;
         var pid = System.Diagnostics.Process.GetCurrentProcess().Id;
 
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            ApplyZipWindows(newExe, currentExe, pid);
+        else
+            ApplyZipUnix(newExe, currentExe, pid);
+    }
+
+    private static void ApplyZipWindows(string newExe, string currentExe, int pid)
+    {
         var bat = Path.Combine(Path.GetTempPath(), "usb-daq-updater.bat");
         File.WriteAllText(bat, $"""
             @echo off
@@ -107,6 +151,29 @@ public sealed class UpdateChecker : IDisposable
             FileName = "cmd.exe",
             Arguments = $"/c \"{bat}\"",
             WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+            CreateNoWindow = true
+        });
+    }
+
+    private static void ApplyZipUnix(string newExe, string currentExe, int pid)
+    {
+        var script = Path.Combine(Path.GetTempPath(), "usb-daq-updater.sh");
+        File.WriteAllText(script, $"""
+            #!/bin/sh
+            while kill -0 {pid} 2>/dev/null; do
+                sleep 1
+            done
+            cp -f "{newExe}" "{currentExe}"
+            chmod +x "{currentExe}"
+            nohup "{currentExe}" >/dev/null 2>&1 &
+            rm -f "$0"
+            """);
+
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "/bin/sh",
+            Arguments = $"\"{script}\"",
+            UseShellExecute = false,
             CreateNoWindow = true
         });
     }

@@ -18,10 +18,38 @@ Desktop DAQ application scaffold for a USB pressure transducer workflow, targeti
 
 ## Run
 
-```powershell
-dotnet build .\UsbDaq612.slnx
-dotnet run --project .\UsbDaq.App\UsbDaq.App.csproj
+```bash
+dotnet build UsbDaq612.slnx
+dotnet run --project UsbDaq.App/UsbDaq.App.csproj
 ```
+
+The app is built on Avalonia and runs on **Windows**, **macOS**, and **Linux**.
+
+## Publish (self-contained builds)
+
+Each platform gets its own self-contained package (no .NET install required on the
+target machine). Publish for any supported runtime with:
+
+```bash
+# Windows (x64)
+dotnet publish UsbDaq.App/UsbDaq.App.csproj -c Release -r win-x64   --self-contained true -o publish/win-x64
+
+# Linux (x64)
+dotnet publish UsbDaq.App/UsbDaq.App.csproj -c Release -r linux-x64 --self-contained true -o publish/linux-x64
+
+# macOS (Intel)
+dotnet publish UsbDaq.App/UsbDaq.App.csproj -c Release -r osx-x64   --self-contained true -o publish/osx-x64
+
+# macOS (Apple Silicon)
+dotnet publish UsbDaq.App/UsbDaq.App.csproj -c Release -r osx-arm64 --self-contained true -o publish/osx-arm64
+```
+
+On macOS/Linux the launcher is `UsbDaq.App` (mark it executable with
+`chmod +x UsbDaq.App` if needed). On Windows it is `UsbDaq.App.exe`.
+
+Pushing a `v*` git tag triggers the release workflow, which publishes all four
+platform packages (plus a one-click Windows installer) to a GitHub Release.
+
 
 ## Hardware integration note (important)
 
