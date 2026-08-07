@@ -74,6 +74,7 @@ public sealed class MultiDeviceGraphControl : Control
 
     private static readonly Cursor SizeCursor = new(StandardCursorType.SizeWestEast);
     private static readonly Cursor ArrowCursor = new(StandardCursorType.Arrow);
+    private static readonly Cursor AlarmCursor = new(StandardCursorType.SizeNorthSouth);
     private static readonly Cursor PanCursor = new(StandardCursorType.SizeAll);
     private const int MinVisibleSamples = 2;
     private const double MarginLeft = 68;
@@ -90,6 +91,11 @@ public sealed class MultiDeviceGraphControl : Control
     private double _cursorFracA = 0.3;
     private double _cursorFracB = 0.7;
     private bool _isDraggingBoth;
+    private bool _isDraggingAlarm;
+    private DeviceChannelViewModel? _alarmDragCh;
+    private bool _alarmDragIsLow;
+    private Rect _alarmDragRegion;
+    private readonly List<(DeviceChannelViewModel Ch, bool IsLow, double Y, Rect Region)> _alarmHandles = new();
     private Rect _lastPlotRect;
     private double _activeViewStart;
     private double _activeViewSpan = 1;
@@ -276,6 +282,7 @@ public sealed class MultiDeviceGraphControl : Control
             Math.Max(1, bounds.Width - MarginLeft - MarginRight),
             Math.Max(1, bounds.Height - MarginTop - MarginBottom));
         _lastPlotRect = plot;
+        _alarmHandles.Clear();
 
         var axisBrush = new SolidColorBrush(Color.Parse("#8EA4B7"));
         var gridPen = new Pen(new SolidColorBrush(Color.Parse("#566D80"), 0.25), 1);
@@ -414,8 +421,10 @@ public sealed class MultiDeviceGraphControl : Control
             foreach (var ch in channels)
             {
                 if (!ch.AlarmEnabled) continue;
-                DrawAlarmLevel(context, plot, ch.LowAlarm, MinValue, ySpan, ch.TraceColor, $"{ch.DisplayName} Lo", below: false);
-                DrawAlarmLevel(context, plot, ch.HighAlarm, MinValue, ySpan, ch.TraceColor, $"{ch.DisplayName} Hi", below: true);
+                var loY = DrawAlarmLevel(context, plot, ch.LowAlarm, MinValue, ySpan, ch.TraceColor, $"{ch.DisplayName} Lo", below: false);
+                var hiY = DrawAlarmLevel(context, plot, ch.HighAlarm, MinValue, ySpan, ch.TraceColor, $"{ch.DisplayName} Hi", below: true);
+                if (!double.IsNaN(loY)) _alarmHandles.Add((ch, true, loY, plot));
+                if (!double.IsNaN(hiY)) _alarmHandles.Add((ch, false, hiY, plot));
             }
         }
 
@@ -524,6 +533,14 @@ public sealed class MultiDeviceGraphControl : Control
             _isDraggingCursor = true;
             SetCursorFromX(point.X, _dragCursorA);
         }
+        else if (TryFindAlarm(point, out var alarmCh, out var alarmIsLow, out var alarmRegion))
+        {
+            _isDraggingAlarm = true;
+            _alarmDragCh = alarmCh;
+            _alarmDragIsLow = alarmIsLow;
+            _alarmDragRegion = alarmRegion;
+            Cursor = AlarmCursor;
+        }
         else if (!_isStripMode)
         {
             _isPanning = true;
@@ -538,7 +555,16 @@ public sealed class MultiDeviceGraphControl : Control
         base.OnPointerMoved(e);
         var point = e.GetPosition(this);
 
-        if (_isPanning && !_isStripMode)
+        if (_isDraggingAlarm && _alarmDragCh is not null)
+        {
+            var value = ValueFromY(point.Y, _alarmDragRegion);
+            if (_alarmDragIsLow)
+                _alarmDragCh.LowAlarm = Math.Clamp(value, MinValue, _alarmDragCh.HighAlarm);
+            else
+                _alarmDragCh.HighAlarm = Math.Clamp(value, _alarmDragCh.LowAlarm, MaxValue);
+            InvalidateVisual();
+        }
+        else if (_isPanning && !_isStripMode)
         {
             var totalSpan = Math.Max(1, GetTotalSpan());
             var viewSpan = ComputeViewSpan(totalSpan);
@@ -569,6 +595,10 @@ public sealed class MultiDeviceGraphControl : Control
         {
             SetCursorFromX(point.X, _dragCursorA);
         }
+        else if (TryFindAlarm(point, out _, out _, out _))
+        {
+            Cursor = AlarmCursor;
+        }
         else if (ShowCursors && MoveCursorPair)
         {
             Cursor = _lastPlotRect.Contains(point) ? PanCursor : ArrowCursor;
@@ -595,6 +625,8 @@ public sealed class MultiDeviceGraphControl : Control
         _isPanning = false;
         _isDraggingCursor = false;
         _isDraggingBoth = false;
+        _isDraggingAlarm = false;
+        _alarmDragCh = null;
         Cursor = ArrowCursor;
         e.Pointer.Capture(null);
     }
@@ -707,11 +739,17 @@ public sealed class MultiDeviceGraphControl : Control
                 var loY = strip.Bottom - Math.Clamp((channel.LowAlarm - MinValue) / ySpan, 0, 1) * strip.Height;
                 var hiY = strip.Bottom - Math.Clamp((channel.HighAlarm - MinValue) / ySpan, 0, 1) * strip.Height;
                 if (loY > strip.Top && loY < strip.Bottom)
+                {
                     context.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#F59E0B")), 1, dashStyle),
                         new Point(strip.Left, loY), new Point(strip.Right, loY));
+                    _alarmHandles.Add((channel, true, loY, strip));
+                }
                 if (hiY > strip.Top && hiY < strip.Bottom)
+                {
                     context.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#EF4444")), 1, dashStyle),
                         new Point(strip.Left, hiY), new Point(strip.Right, hiY));
+                    _alarmHandles.Add((channel, false, hiY, strip));
+                }
             }
 
             // Channel label overlay (top-left of strip)
@@ -820,25 +858,26 @@ public sealed class MultiDeviceGraphControl : Control
     private static void DrawModeHint(DrawingContext context, IBrush textBrush, Rect plot, bool isStripMode)
     {
         var hint = isStripMode
-            ? "Strip Chart  |  scroll = zoom  \u2022  drag cursor handles  \u2022  Pair = move both"
-            : "Sliding Window  |  scroll = zoom  \u2022  right-drag = pan  \u2022  drag cursors  \u2022  Pair = move both  \u2022  Shift+click = cursor A";
+            ? "Strip Chart  |  scroll = zoom  \u2022  drag cursor handles  \u2022  Pair = move both  \u2022  drag alarm lines to edit"
+            : "Sliding Window  |  scroll = zoom  \u2022  right-drag = pan  \u2022  drag cursors  \u2022  Pair = move both  \u2022  drag alarm lines to edit";
         var ft = new FormattedText(hint, CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10.5, textBrush);
         context.DrawText(ft, new Point(plot.Left + 4, Math.Max(0, plot.Top - 13)));
     }
 
-    private static void DrawAlarmLevel(DrawingContext context, Rect plot, double value,
+    private static double DrawAlarmLevel(DrawingContext context, Rect plot, double value,
         double minValue, double ySpan, Color color, string label, bool below)
     {
         var norm = Math.Clamp((value - minValue) / ySpan, 0, 1);
         var y = plot.Bottom - norm * plot.Height;
-        if (y <= plot.Top || y >= plot.Bottom) return;
+        if (y <= plot.Top || y >= plot.Bottom) return double.NaN;
         var brush = new SolidColorBrush(color);
         context.DrawLine(new Pen(brush, 1, DashStyle.Dash), new Point(plot.Left, y), new Point(plot.Right, y));
         var ft = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
             new Typeface("Segoe UI"), 9.5, brush);
         var labelY = below ? y + 2 : y - ft.Height - 1;
         context.DrawText(ft, new Point(plot.Right - ft.Width - 4, labelY));
+        return y;
     }
 
     private int GetTotalSpan()
@@ -864,6 +903,44 @@ public sealed class MultiDeviceGraphControl : Control
     {
         _cursorFracA = Math.Clamp((_cursorA - _activeViewStart) / Math.Max(1, _activeViewSpan), 0, 1);
         _cursorFracB = Math.Clamp((_cursorB - _activeViewStart) / Math.Max(1, _activeViewSpan), 0, 1);
+    }
+
+    // Brings both cursors back into the visible window (at ~1/3 and ~2/3 across).
+    public void CenterCursors()
+    {
+        _cursorFracA = 0.33;
+        _cursorFracB = 0.66;
+        _cursorA = Math.Clamp(_activeViewStart + _cursorFracA * _activeViewSpan, 0, _activeTotalSpan);
+        _cursorB = Math.Clamp(_activeViewStart + _cursorFracB * _activeViewSpan, 0, _activeTotalSpan);
+        InvalidateVisual();
+    }
+
+    private double ValueFromY(double y, Rect region)
+    {
+        var norm = Math.Clamp((region.Bottom - y) / Math.Max(1, region.Height), 0, 1);
+        return MinValue + norm * (MaxValue - MinValue);
+    }
+
+    private bool TryFindAlarm(Point p, out DeviceChannelViewModel ch, out bool isLow, out Rect region)
+    {
+        ch = null!;
+        isLow = false;
+        region = default;
+        if (!ShowAlarmLines) return false;
+        var best = double.MaxValue;
+        foreach (var h in _alarmHandles)
+        {
+            if (p.X < h.Region.Left || p.X > h.Region.Right) continue;
+            var d = Math.Abs(p.Y - h.Y);
+            if (d <= 6 && d < best)
+            {
+                best = d;
+                ch = h.Ch;
+                isLow = h.IsLow;
+                region = h.Region;
+            }
+        }
+        return ch is not null;
     }
 
     private double CursorToX(double cursor)

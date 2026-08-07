@@ -159,6 +159,7 @@ public partial class MainWindow : Window
     private void Zoom30sButton_OnClick(object? sender, RoutedEventArgs e) => GraphControl.ZoomToSeconds(30, _viewModel.SampleIntervalMs);
     private void Zoom1mButton_OnClick(object? sender, RoutedEventArgs e) => GraphControl.ZoomToSeconds(60, _viewModel.SampleIntervalMs);
     private void Zoom5mButton_OnClick(object? sender, RoutedEventArgs e) => GraphControl.ZoomToSeconds(300, _viewModel.SampleIntervalMs);
+    private void CenterCursorsButton_OnClick(object? sender, RoutedEventArgs e) => GraphControl.CenterCursors();
 
     private void SignalColorSwatch_OnClick(object? sender, RoutedEventArgs e)
     {
