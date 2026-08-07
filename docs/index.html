@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>USB DAQ — Multi-Channel Pressure Data Acquisition</title>
-  <meta name="description" content="Live multi-device pressure monitoring for GP50 sensors — real-time graphs, alarms, Excel export, and streaming to MQTT, Redis, and ThingsBoard. One-click Windows installer with automatic updates." />
+  <meta name="description" content="Live multi-device pressure monitoring for GP50 sensors — real-time graphs, alarms, Excel export, and streaming to MQTT, Redis, and ThingsBoard. Cross-platform for Windows, macOS, and Linux with automatic updates." />
   <style>
     :root {
       --bg: #0b0f17;
@@ -46,6 +46,11 @@
     }
     .btn:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(62,166,255,0.35); }
     .btn svg { width: 20px; height: 20px; }
+    .btn.secondary {
+      background: transparent; color: var(--text); font-weight: 600; font-size: 15px;
+      border: 1px solid var(--border); box-shadow: none; padding: 13px 20px;
+    }
+    .btn.secondary:hover { border-color: var(--accent); box-shadow: none; }
     .sub { font-size: 13px; color: var(--muted); }
     .sub a { color: var(--accent); text-decoration: none; }
     .sub a:hover { text-decoration: underline; }
@@ -86,7 +91,7 @@
 </head>
 <body>
   <div class="wrap">
-    <span class="badge"><span class="dot"></span> Windows · Auto-updating · Self-contained</span>
+    <span class="badge"><span class="dot"></span> Windows · macOS · Linux · Auto-updating</span>
 
     <h1>USB&nbsp;DAQ</h1>
     <p class="lede">
@@ -101,10 +106,19 @@
         Download for Windows
       </a>
       <span class="sub">
-        One-click installer (.exe) · no admin needed ·
-        <a href="https://github.com/jamesritter03-kirby/USB-DAQ/releases">all releases</a>
+        One-click installer (.exe) · no admin needed
       </span>
     </div>
+
+    <div class="cta" style="margin-top:8px;">
+      <a class="btn secondary" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest">macOS (Apple Silicon)</a>
+      <a class="btn secondary" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest">macOS (Intel)</a>
+      <a class="btn secondary" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest">Linux (x64)</a>
+    </div>
+    <span class="sub">
+      Self-contained builds — no .NET install required ·
+      <a href="https://github.com/jamesritter03-kirby/USB-DAQ/releases">all releases</a>
+    </span>
 
     <ul class="features">
       <li>Multi-device live graphing</li>
@@ -121,11 +135,17 @@
 
     <div class="panel">
       <h2>Installing</h2>
-      <p>Download and run the installer — that's it.</p>
+      <p><strong>Windows</strong> — download and run the installer, that's it.</p>
       <ol class="steps">
         <li>Click <strong>Download for Windows</strong> above.</li>
         <li>Run <code>USB-DAQ-Setup.exe</code>. It installs per-user (no admin prompt).</li>
         <li>Launch from the Start Menu or desktop shortcut.</li>
+      </ol>
+      <p style="margin-top:18px;"><strong>macOS &amp; Linux</strong> — grab the zip for your platform from the latest release.</p>
+      <ol class="steps">
+        <li>Download <code>USB-DAQ-…-osx-arm64.zip</code> (Apple Silicon), <code>-osx-x64.zip</code> (Intel), or <code>-linux-x64.zip</code>.</li>
+        <li>Unzip it, then make the launcher executable: <code>chmod +x UsbDaq.App</code>.</li>
+        <li>Run <code>./UsbDaq.App</code> from the <code>app</code> folder.</li>
       </ol>
       <p style="margin-top:18px;">
         The app checks for new versions on startup and can update itself with one click —
