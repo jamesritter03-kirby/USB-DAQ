@@ -289,6 +289,8 @@
                                       ToolTip.Tip="Snap cursors to nearest data sample"/>
                             <CheckBox Content="Track" IsChecked="{Binding CursorFollowsData}" FontSize="12"
                                       ToolTip.Tip="Cursors move with the plot (checked) or stay fixed on the x-axis (unchecked)"/>
+                            <ToggleButton Content="Pair" IsChecked="{Binding MoveCursorPair}" FontSize="12" Padding="8,2"
+                                      ToolTip.Tip="When on, drag anywhere on the plot to move both cursors together"/>
                             <CheckBox Content="Markers" IsChecked="{Binding ShowPointMarkers}" FontSize="12"/>
                             <CheckBox Content="Legend" IsChecked="{Binding ShowLegend}" FontSize="12"/>
                             <CheckBox Content="Alarm Lines" IsChecked="{Binding ShowAlarmLines}" FontSize="12"/>
@@ -340,6 +342,7 @@
                                                       StackedPlots="{Binding StackedPlots}"
                                                       CursorSnapToData="{Binding CursorSnapToData}"
                                                       CursorFollowsData="{Binding CursorFollowsData}"
+                                                      MoveCursorPair="{Binding MoveCursorPair}"
                                                       LowAlarmValue="{Binding LowAlarmPsig}"
                                                       HighAlarmValue="{Binding HighAlarmPsig}"
                                                       IsAcquiring="{Binding IsAcquiring}"/>

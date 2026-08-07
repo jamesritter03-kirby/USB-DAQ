@@ -58,6 +58,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _stackedPlots;
     private bool _cursorSnapToData;
     private bool _cursorFollowsData = true;
+    private bool _moveCursorPair;
     private int _historyDurationSecs = 120;
 
     // MQTT streaming config
@@ -177,6 +178,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => _cursorFollowsData;
         set => SetField(ref _cursorFollowsData, value);
+    }
+
+    public bool MoveCursorPair
+    {
+        get => _moveCursorPair;
+        set => SetField(ref _moveCursorPair, value);
     }
 
     public int HistoryDurationSecs

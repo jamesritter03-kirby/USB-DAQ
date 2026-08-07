@@ -68,6 +68,10 @@ public sealed class MultiDeviceGraphControl : Control
     public static readonly StyledProperty<bool> CursorFollowsDataProperty =
         AvaloniaProperty.Register<MultiDeviceGraphControl, bool>(nameof(CursorFollowsData), true);
 
+    // When true, dragging anywhere in the plot moves both cursors together (preserving spacing).
+    public static readonly StyledProperty<bool> MoveCursorPairProperty =
+        AvaloniaProperty.Register<MultiDeviceGraphControl, bool>(nameof(MoveCursorPair), false);
+
     private static readonly Cursor SizeCursor = new(StandardCursorType.SizeWestEast);
     private static readonly Cursor ArrowCursor = new(StandardCursorType.Arrow);
     private static readonly Cursor PanCursor = new(StandardCursorType.SizeAll);
@@ -113,7 +117,8 @@ public sealed class MultiDeviceGraphControl : Control
             IsAcquiringProperty,
             StackedPlotsProperty,
             CursorSnapToDataProperty,
-            CursorFollowsDataProperty);
+            CursorFollowsDataProperty,
+            MoveCursorPairProperty);
     }
 
     public MultiDeviceGraphControl()
@@ -227,6 +232,12 @@ public sealed class MultiDeviceGraphControl : Control
     {
         get => GetValue(CursorFollowsDataProperty);
         set => SetValue(CursorFollowsDataProperty, value);
+    }
+
+    public bool MoveCursorPair
+    {
+        get => GetValue(MoveCursorPairProperty);
+        set => SetValue(MoveCursorPairProperty, value);
     }
 
     public void ResetView()
@@ -502,7 +513,13 @@ public sealed class MultiDeviceGraphControl : Control
         var nearB = ShowCursors && Math.Abs(point.X - xB) <= 16;
         var betweenCursors = ShowCursors && point.X > Math.Min(xA, xB) && point.X < Math.Max(xA, xB);
 
-        if (ShowCursors && (nearA || nearB || e.KeyModifiers.HasFlag(KeyModifiers.Shift)))
+        if (ShowCursors && MoveCursorPair)
+        {
+            // Pair mode: drag anywhere moves both cursors together.
+            _isDraggingBoth = true;
+            Cursor = PanCursor;
+        }
+        else if (ShowCursors && (nearA || nearB || e.KeyModifiers.HasFlag(KeyModifiers.Shift)))
         {
             _dragCursorA = nearA || (!nearB && e.KeyModifiers.HasFlag(KeyModifiers.Shift));
             _isDraggingCursor = true;
@@ -557,6 +574,10 @@ public sealed class MultiDeviceGraphControl : Control
         else if (_isDraggingCursor)
         {
             SetCursorFromX(point.X, _dragCursorA);
+        }
+        else if (ShowCursors && MoveCursorPair)
+        {
+            Cursor = _lastPlotRect.Contains(point) ? PanCursor : ArrowCursor;
         }
         else if (ShowCursors)
         {
@@ -740,6 +761,13 @@ public sealed class MultiDeviceGraphControl : Control
 
         var xA = plot.Left + ((_cursorA - viewStart) / Math.Max(1, viewSpan)) * plot.Width;
         var xB = plot.Left + ((_cursorB - viewStart) / Math.Max(1, viewSpan)) * plot.Width;
+
+        // Shaded band between the cursors — a grab target for moving both together.
+        var bandLeft = Math.Min(xA, xB);
+        var bandRight = Math.Max(xA, xB);
+        if (bandRight - bandLeft > 1)
+            context.DrawRectangle(new SolidColorBrush(Color.Parse("#1FE2E8F0")), null,
+                new Rect(bandLeft, plot.Top, bandRight - bandLeft, plot.Height));
 
         // Cursor lines
         context.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#E2E8F0"), 0.85), 1.5),
