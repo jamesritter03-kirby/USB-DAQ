@@ -23,6 +23,7 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
     private string _signalName;
     private string _colorHex;
     private Color _traceColor;
+    private readonly SolidColorBrush _traceBrush = new();
     private string _status = "Idle";
     private string _currentPressureText = "--.- psig";
     private double _currentPressure;
@@ -51,6 +52,7 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
         _signalName = descriptor.DisplayName;
         _colorHex = colorHex;
         _traceColor = ParseColorOrDefault(colorHex);
+        _traceBrush.Color = _traceColor;
         _protocol = protocol ?? SerialProtocolDefinition.Gp50Poll;
         _stationNumber = stationNumber;
     }
@@ -90,6 +92,7 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
         {
             if (SetField(ref _traceColor, value))
             {
+                _traceBrush.Color = value;
                 OnPropertyChanged(nameof(TraceBrush));
                 var hex = $"#{value.R:X2}{value.G:X2}{value.B:X2}";
                 if (!_colorHex.Equals(hex, StringComparison.OrdinalIgnoreCase))
@@ -102,7 +105,7 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
     }
 
     // Brush form of the trace color for XAML backgrounds (Color does not bind to IBrush).
-    public IBrush TraceBrush => new SolidColorBrush(_traceColor);
+    public IBrush TraceBrush => _traceBrush;
 
     public bool IsVisible
     {

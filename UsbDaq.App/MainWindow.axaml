@@ -168,7 +168,7 @@
                                                 IsVisible="{Binding IsAlarm}"/>
                                         <Grid ColumnDefinitions="5,*,Auto">
                                             <!-- Color strip -->
-                                            <Rectangle Grid.Column="0" Fill="{Binding TraceColor}"/>
+                                            <Rectangle Grid.Column="0" Fill="{Binding TraceBrush}"/>
                                             <!-- Main content -->
                                             <StackPanel Grid.Column="1" Margin="10,8,4,8" Spacing="3">
                                                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4">
