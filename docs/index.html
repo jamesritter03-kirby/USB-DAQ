@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>USB DAQ — Multi-Channel Pressure Data Acquisition</title>
+  <meta name="description" content="Live multi-device pressure monitoring for GP50 sensors — real-time graphs, alarms, Excel export, and streaming to MQTT, Redis, and ThingsBoard. One-click Windows installer with automatic updates." />
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #131a26;
+      --accent: #3ea6ff;
+      --accent-2: #2bd9a8;
+      --text: #e6edf6;
+      --muted: #97a3b6;
+      --border: #22304a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(1200px 600px at 50% -10%, #16233a 0%, var(--bg) 55%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 72px 24px 96px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 999px;
+      padding: 6px 14px; margin-bottom: 28px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 10px var(--accent-2); }
+    h1 { font-size: 44px; line-height: 1.1; margin: 0 0 18px; letter-spacing: -0.02em; }
+    .lede { font-size: 19px; color: var(--muted); max-width: 640px; margin: 0 0 36px; }
+    .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 14px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: linear-gradient(180deg, var(--accent) 0%, #2b82d6 100%);
+      color: #04121f; font-weight: 700; font-size: 17px;
+      text-decoration: none; border: none; border-radius: 12px;
+      padding: 16px 26px; cursor: pointer;
+      box-shadow: 0 8px 24px rgba(62,166,255,0.25);
+      transition: transform .08s ease, box-shadow .2s ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(62,166,255,0.35); }
+    .btn svg { width: 20px; height: 20px; }
+    .sub { font-size: 13px; color: var(--muted); }
+    .sub a { color: var(--accent); text-decoration: none; }
+    .sub a:hover { text-decoration: underline; }
+    .features {
+      margin: 44px 0 0; padding: 0; list-style: none;
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 28px;
+    }
+    .features li {
+      position: relative; padding-left: 24px; color: var(--text); font-size: 15px;
+    }
+    .features li::before {
+      content: "›"; position: absolute; left: 6px; top: -1px;
+      color: var(--accent-2); font-weight: 700;
+    }
+    .panel {
+      margin-top: 56px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px; padding: 26px 28px;
+    }
+    .panel h2 { margin: 0 0 8px; font-size: 20px; }
+    .panel p { margin: 0 0 18px; color: var(--muted); font-size: 15px; }
+    .steps { margin: 0; padding-left: 20px; color: var(--text); font-size: 15px; }
+    .steps li { margin-bottom: 6px; }
+    code {
+      background: #0c1420; border: 1px solid var(--border); border-radius: 6px;
+      padding: 1px 6px; font-size: 13px; color: var(--accent-2);
+    }
+    footer {
+      margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--muted);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    @media (max-width: 620px) {
+      h1 { font-size: 34px; }
+      .features { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge"><span class="dot"></span> Windows · Auto-updating · Self-contained</span>
+
+    <h1>USB&nbsp;DAQ</h1>
+    <p class="lede">
+      Live multi-channel pressure data acquisition for GP50 sensors. Monitor
+      every device on one screen, set alarms, export to Excel, and stream
+      readings straight to MQTT, Redis, or ThingsBoard.
+    </p>
+
+    <div class="cta">
+      <a class="btn" href="https://github.com/jamesritter03-kirby/USB-DAQ/releases/latest/download/USB-DAQ-Setup.exe">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        Download for Windows
+      </a>
+      <span class="sub">
+        One-click installer (.exe) · no admin needed ·
+        <a href="https://github.com/jamesritter03-kirby/USB-DAQ/releases">all releases</a>
+      </span>
+    </div>
+
+    <ul class="features">
+      <li>Multi-device live graphing</li>
+      <li>Per-channel high/low alarms</li>
+      <li>GP50 ASCII serial protocol</li>
+      <li>Simulation mode for testing</li>
+      <li>Excel (.xlsx) data export</li>
+      <li>MQTT / Redis / ThingsBoard streaming</li>
+      <li>Per-sensor stream keys &amp; publish rates</li>
+      <li>Saveable profiles + auto-resume</li>
+      <li>Built-in automatic updates</li>
+      <li>Fleet average dashboard</li>
+    </ul>
+
+    <div class="panel">
+      <h2>Installing</h2>
+      <p>Download and run the installer — that's it.</p>
+      <ol class="steps">
+        <li>Click <strong>Download for Windows</strong> above.</li>
+        <li>Run <code>USB-DAQ-Setup.exe</code>. It installs per-user (no admin prompt).</li>
+        <li>Launch from the Start Menu or desktop shortcut.</li>
+      </ol>
+      <p style="margin-top:18px;">
+        The app checks for new versions on startup and can update itself with one click —
+        no need to come back here for future releases.
+      </p>
+    </div>
+
+    <footer>
+      Open source ·
+      <a href="https://github.com/jamesritter03-kirby/USB-DAQ">github.com/jamesritter03-kirby/USB-DAQ</a>
+    </footer>
+  </div>
+</body>
+</html>

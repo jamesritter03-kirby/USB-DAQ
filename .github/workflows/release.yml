@@ -66,16 +66,16 @@ jobs:
           & $iscc "/DMyAppVersion=$ver" installer/UsbDaq.iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup compile failed" }
 
-          # Give the installer a versioned name for the release asset
-          Move-Item "installer/Output/USB-DAQ-Setup.exe" "USB-DAQ-Setup-v${ver}.exe" -Force
-          Write-Host "Created USB-DAQ-Setup-v${ver}.exe"
+          # Constant filename so the landing page can always link to the latest installer
+          Move-Item "installer/Output/USB-DAQ-Setup.exe" "USB-DAQ-Setup.exe" -Force
+          Write-Host "Created USB-DAQ-Setup.exe"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "USB DAQ v${{ steps.version.outputs.VERSION }}"
           files: |
-            USB-DAQ-Setup-v${{ steps.version.outputs.VERSION }}.exe
+            USB-DAQ-Setup.exe
             USB-DAQ-v${{ steps.version.outputs.VERSION }}-win-x64.zip
           generate_release_notes: true
           draft: false
