@@ -15,6 +15,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using ClosedXML.Excel;
+using UsbDaq.App.Services;
 using UsbDaq.App.ViewModels;
 using UsbDaq.Core;
 
@@ -43,6 +44,8 @@ public partial class MainWindow : Window
             await _viewModel.RefreshDevicesAsync();
             await _viewModel.LoadLastSessionAsync();
             ApplyTheme(_viewModel.ThemeMode);
+            // Background update check — silent so it doesn't disrupt startup
+            _ = _viewModel.CheckForUpdatesAsync(silent: true);
         };
         Closing += async (_, _) =>
         {
@@ -106,6 +109,23 @@ public partial class MainWindow : Window
     private void SaveCustomProtocol_OnClick(object? sender, RoutedEventArgs e)
     {
         _viewModel.SaveCustomProtocol();
+    }
+
+    private async void CheckForUpdates_Click(object? sender, RoutedEventArgs e)
+    {
+        await _viewModel.CheckForUpdatesAsync(silent: false);
+        if (_viewModel.PendingUpdate is { } release)
+        {
+            var asset = release.Assets.FirstOrDefault(a => a.Name.EndsWith(".zip"));
+            var dialog = new UpdateWindow(new UpdateWindowViewModel
+            {
+                Version = release.TagName.TrimStart('v'),
+                ReleaseUrl = release.HtmlUrl,
+                DownloadUrl = asset?.BrowserDownloadUrl ?? release.HtmlUrl,
+                ReleaseNotes = release.Body
+            });
+            await dialog.ShowDialog(this);
+        }
     }
 
     private async void OpenSettings_Click(object? sender, RoutedEventArgs e)

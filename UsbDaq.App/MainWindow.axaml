@@ -56,6 +56,10 @@
                     <Button Content="■  Stop" Click="StopButton_OnClick"
                             IsEnabled="{Binding CanStopAcquisition}" Padding="14,5"/>
                     <ToggleButton Content="⏺  Record" IsChecked="{Binding IsRecording}" Padding="14,5"/>
+                    <!-- Version/update badge — turns to ⬆ vX.Y.Z when an update is available -->
+                    <Button Content="{Binding VersionLabel}" Click="CheckForUpdates_Click"
+                            Padding="12,5" FontSize="12" VerticalAlignment="Center"
+                            ToolTip.Tip="Click to check for updates"/>
                     <!-- Profiles flyout -->
                     <Button Content="Profiles ▾" Padding="14,5">
                         <Button.Flyout>

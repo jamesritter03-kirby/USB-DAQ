@@ -1,0 +1,47 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="UsbDaq.App.UpdateWindow"
+        x:CompileBindings="False"
+        Title="Update Available"
+        Width="500"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="*,Auto" Margin="20,16,20,16">
+        <StackPanel Grid.Row="0" Spacing="14">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <TextBlock Grid.Column="0" Text="🎉" FontSize="28" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding Subtitle}" FontSize="12"
+                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Release notes -->
+            <Border Padding="12,10" CornerRadius="6" MaxHeight="280"
+                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <ScrollViewer>
+                    <TextBlock Text="{Binding ReleaseNotes}" FontSize="12" TextWrapping="Wrap"/>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Progress bar (visible during download) -->
+            <StackPanel IsVisible="{Binding IsDownloading}" Spacing="6">
+                <ProgressBar Value="{Binding DownloadProgress}" Minimum="0" Maximum="100" Height="8"/>
+                <TextBlock Text="{Binding DownloadStatus}" FontSize="11"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </StackPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,16,0,0">
+            <Button Grid.Column="0" Content="Open Release Page" Click="OpenReleasePageButton_Click"
+                    Padding="14,7"/>
+            <Button Grid.Column="2" Content="Not Now" Click="NotNowButton_Click" Padding="14,7"/>
+            <Button Grid.Column="3" Content="{Binding InstallButtonLabel}" Click="DownloadInstallButton_Click"
+                    IsEnabled="{Binding !IsDownloading}" Padding="14,7"/>
+        </Grid>
+    </Grid>
+</Window>

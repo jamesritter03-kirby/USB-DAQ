@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using UsbDaq.App.Models;
+using UsbDaq.App.Services;
 using UsbDaq.App.Streaming;
 using UsbDaq.Core;
 
@@ -437,6 +438,49 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!File.Exists(file)) return;
         try { await LoadProfileAsync("_last_session"); }
         catch { /* ignore corrupt session file */ }
+    }
+
+    // ── Update checking ──────────────────────────────────────
+
+    private GitHubRelease? _pendingUpdate;
+
+    public GitHubRelease? PendingUpdate
+    {
+        get => _pendingUpdate;
+        private set
+        {
+            if (SetField(ref _pendingUpdate, value))
+                OnPropertyChanged(nameof(VersionLabel));
+        }
+    }
+
+    public string VersionLabel => _pendingUpdate is not null
+        ? $"⬆ v{_pendingUpdate.TagName.TrimStart('v')}"
+        : $"v{AppVersion.Current}";
+
+    public async Task CheckForUpdatesAsync(bool silent = false)
+    {
+        try
+        {
+            using var checker = new UpdateChecker();
+            var release = await checker.GetLatestAsync();
+            if (release is null) return;
+
+            if (UpdateChecker.IsNewer(release.TagName))
+            {
+                PendingUpdate = release;
+                if (!silent) Status = $"Update available: {release.TagName}";
+            }
+            else if (!silent)
+            {
+                Status = $"You are running the latest version (v{AppVersion.Current}).";
+            }
+        }
+        catch when (silent) { /* background check — swallow errors */ }
+        catch (Exception ex)
+        {
+            Status = $"Update check failed: {ex.Message}";
+        }
     }
 
     public void SaveCustomProtocol()

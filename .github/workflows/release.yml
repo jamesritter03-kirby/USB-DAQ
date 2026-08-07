@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Publish (self-contained, win-x64)
+        run: |
+          dotnet publish UsbDaq.App/UsbDaq.App.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:Version=${{ steps.version.outputs.VERSION }} `
+            --output publish/app
+
+      - name: Build release package
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          $pkg = "USB-DAQ-v${ver}-win-x64"
+
+          New-Item -Path $pkg -ItemType Directory -Force | Out-Null
+          Copy-Item -Path publish/app -Destination "$pkg/app" -Recurse -Force
+          Copy-Item installer/Install-UsbDaq.ps1   "$pkg/"
+          Copy-Item installer/Uninstall-UsbDaq.ps1 "$pkg/"
+          Copy-Item installer/README-INSTALLER.md  "$pkg/"
+
+          Compress-Archive -Path $pkg -DestinationPath "${pkg}.zip"
+          Write-Host "Created ${pkg}.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "USB DAQ v${{ steps.version.outputs.VERSION }}"
+          files: "USB-DAQ-v${{ steps.version.outputs.VERSION }}-win-x64.zip"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
