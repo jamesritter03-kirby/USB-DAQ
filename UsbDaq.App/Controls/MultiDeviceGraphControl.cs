@@ -507,7 +507,7 @@ public sealed class MultiDeviceGraphControl : Control
         if (!_lastPlotRect.Contains(point)) return;
 
         var props = e.GetCurrentPoint(this).Properties;
-        if (props.IsRightButtonPressed || props.IsMiddleButtonPressed)
+        if (props.IsMiddleButtonPressed)
         {
             _isPanning = true;
             e.Pointer.Capture(this);
@@ -777,9 +777,9 @@ public sealed class MultiDeviceGraphControl : Control
 
         if (CursorFollowsData)
         {
-            // Data mode: keep fractions in sync so a later switch to axis mode is seamless.
-            _cursorFracA = Math.Clamp((_cursorA - viewStart) / Math.Max(1, viewSpan), 0, 1);
-            _cursorFracB = Math.Clamp((_cursorB - viewStart) / Math.Max(1, viewSpan), 0, 1);
+            // Data mode: track each cursor's true position (unclamped) so switching to axis mode is seamless.
+            _cursorFracA = (_cursorA - viewStart) / Math.Max(1, viewSpan);
+            _cursorFracB = (_cursorB - viewStart) / Math.Max(1, viewSpan);
         }
         else
         {
@@ -868,8 +868,8 @@ public sealed class MultiDeviceGraphControl : Control
     private static void DrawModeHint(DrawingContext context, IBrush textBrush, Rect plot, bool isStripMode)
     {
         var hint = isStripMode
-            ? "Strip Chart  |  scroll = zoom  \u2022  drag cursor handles  \u2022  Pair = move both  \u2022  drag alarm lines to edit"
-            : "Sliding Window  |  scroll = zoom  \u2022  right-drag = pan  \u2022  drag cursors  \u2022  Pair = move both  \u2022  drag alarm lines to edit";
+            ? "Strip Chart  |  scroll = zoom  \u2022  drag cursors  \u2022  drag alarm lines  \u2022  right-click = options"
+            : "Sliding Window  |  scroll = zoom  \u2022  left-drag = pan  \u2022  drag cursors / alarm lines  \u2022  right-click = options";
         var ft = new FormattedText(hint, CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10.5, textBrush);
         context.DrawText(ft, new Point(plot.Left + 4, Math.Max(0, plot.Top - 13)));

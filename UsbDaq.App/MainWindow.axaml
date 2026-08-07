@@ -273,11 +273,6 @@
                                     VerticalAlignment="Center" Margin="4,0"/>
                             <Button Content="+" Click="ZoomInButton_OnClick" Width="28" Padding="4,4" FontSize="14"/>
                             <Button Content="−" Click="ZoomOutButton_OnClick" Width="28" Padding="4,4" FontSize="14"/>
-                            <Border Width="1" Height="18"
-                                    Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                                    VerticalAlignment="Center" Margin="4,0"/>
-                            <Button Content="⌖ Cursors" Click="CenterCursorsButton_OnClick" Padding="8,4" FontSize="12"
-                                    ToolTip.Tip="Bring both cursors back into the visible window"/>
                         </StackPanel>
 
                         <!-- Mode and view options -->
@@ -290,16 +285,11 @@
                         <StackPanel Grid.Column="9" Orientation="Horizontal" Spacing="12"
                                     VerticalAlignment="Center">
                             <CheckBox Content="Cursors" IsChecked="{Binding ShowCursors}" FontSize="12"/>
-                            <CheckBox Content="Snap" IsChecked="{Binding CursorSnapToData}" FontSize="12"
-                                      ToolTip.Tip="Snap cursors to nearest data sample"/>
-                            <CheckBox Content="Track" IsChecked="{Binding CursorFollowsData}" FontSize="12"
-                                      ToolTip.Tip="Cursors move with the plot (checked) or stay fixed on the x-axis (unchecked)"/>
-                            <ToggleButton Content="Pair" IsChecked="{Binding MoveCursorPair}" FontSize="12" Padding="8,2"
-                                      ToolTip.Tip="When on, drag anywhere on the plot to move both cursors together"/>
-                            <CheckBox Content="Markers" IsChecked="{Binding ShowPointMarkers}" FontSize="12"/>
                             <CheckBox Content="Legend" IsChecked="{Binding ShowLegend}" FontSize="12"/>
                             <CheckBox Content="Alarm Lines" IsChecked="{Binding ShowAlarmLines}" FontSize="12"/>
                             <CheckBox Content="Stacked" IsChecked="{Binding StackedPlots}" FontSize="12"/>
+                            <TextBlock Text="right-click graph for cursor options" FontSize="10" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </StackPanel>
 
                         <!-- Export flyout button -->
@@ -350,7 +340,20 @@
                                                       MoveCursorPair="{Binding MoveCursorPair}"
                                                       LowAlarmValue="{Binding LowAlarmPsig}"
                                                       HighAlarmValue="{Binding HighAlarmPsig}"
-                                                      IsAcquiring="{Binding IsAcquiring}"/>
+                                                      IsAcquiring="{Binding IsAcquiring}">
+                        <controls:MultiDeviceGraphControl.ContextMenu>
+                            <ContextMenu x:CompileBindings="False">
+                                <MenuItem Header="Center Cursors" Click="CenterCursorsButton_OnClick"/>
+                                <MenuItem Header="Show Cursors" ToggleType="CheckBox" IsChecked="{Binding ShowCursors}"/>
+                                <MenuItem Header="Move Both Cursors (Pair)" ToggleType="CheckBox" IsChecked="{Binding MoveCursorPair}"/>
+                                <MenuItem Header="Snap Cursors to Data" ToggleType="CheckBox" IsChecked="{Binding CursorSnapToData}"/>
+                                <MenuItem Header="Cursors Move With Data" ToggleType="CheckBox" IsChecked="{Binding CursorFollowsData}"
+                                          ToolTip.Tip="On: cursors stick to their data point and scroll off-screen with it. Off: cursors stay fixed on screen."/>
+                                <Separator/>
+                                <MenuItem Header="Point Markers" ToggleType="CheckBox" IsChecked="{Binding ShowPointMarkers}"/>
+                            </ContextMenu>
+                        </controls:MultiDeviceGraphControl.ContextMenu>
+                    </controls:MultiDeviceGraphControl>
                 </Border>
 
                 <!-- Scrollbar -->
