@@ -26,7 +26,7 @@
                 <Grid ColumnDefinitions="58,*" ColumnSpacing="14">
                     <!-- Live color preview -->
                     <Border Grid.Column="0" Height="54" CornerRadius="6"
-                            Background="{Binding Channel.TraceColor}"
+                            Background="{Binding Channel.TraceBrush}"
                             BorderThickness="1"
                             BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
                     <!-- Swatches -->
@@ -56,6 +56,11 @@
                         <Button Tag="#84CC16" Click="ColorSwatch_Click" Width="32" Height="32"
                                 Background="#84CC16" BorderThickness="0" Margin="0,0,6,6" Padding="0" CornerRadius="5"/>
                     </WrapPanel>
+                </Grid>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="Hex" VerticalAlignment="Center" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Channel.ColorHex}" FontSize="12"
+                             Watermark="#RRGGBB"/>
                 </Grid>
             </StackPanel>
 

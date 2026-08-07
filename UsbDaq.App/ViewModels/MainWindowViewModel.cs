@@ -57,6 +57,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _customProtocolPattern = @"[+\-]?[\d]*\.?[\d]+";
     private bool _stackedPlots;
     private bool _cursorSnapToData;
+    private bool _cursorFollowsData = true;
     private int _historyDurationSecs = 120;
 
     // MQTT streaming config
@@ -170,6 +171,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => _cursorSnapToData;
         set => SetField(ref _cursorSnapToData, value);
+    }
+
+    public bool CursorFollowsData
+    {
+        get => _cursorFollowsData;
+        set => SetField(ref _cursorFollowsData, value);
     }
 
     public int HistoryDurationSecs
@@ -338,6 +345,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ShowCursors = ShowCursors,
             ShowAlarmLines = ShowAlarmLines,
             CursorSnapToData = CursorSnapToData,
+            CursorFollowsData = CursorFollowsData,
             ShowPointMarkers = ShowPointMarkers,
             GraphAutoFollow = GraphAutoFollow,
             MqttHost = MqttHost, MqttPort = MqttPort, MqttTopic = MqttTopic,
@@ -393,6 +401,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ShowCursors = p.ShowCursors;
         ShowAlarmLines = p.ShowAlarmLines;
         CursorSnapToData = p.CursorSnapToData;
+        CursorFollowsData = p.CursorFollowsData;
         ShowPointMarkers = p.ShowPointMarkers;
         GraphAutoFollow = p.GraphAutoFollow;
         MqttHost = p.MqttHost; MqttPort = p.MqttPort; MqttTopic = p.MqttTopic;

@@ -63,6 +63,11 @@ public sealed class MultiDeviceGraphControl : Control
     public static readonly StyledProperty<bool> CursorSnapToDataProperty =
         AvaloniaProperty.Register<MultiDeviceGraphControl, bool>(nameof(CursorSnapToData), false);
 
+    // True: cursors stick to their data sample and move with the plot when scrolling.
+    // False: cursors stay fixed on the x-axis (screen position) and read whatever is under them.
+    public static readonly StyledProperty<bool> CursorFollowsDataProperty =
+        AvaloniaProperty.Register<MultiDeviceGraphControl, bool>(nameof(CursorFollowsData), true);
+
     private static readonly Cursor SizeCursor = new(StandardCursorType.SizeWestEast);
     private static readonly Cursor ArrowCursor = new(StandardCursorType.Arrow);
     private static readonly Cursor PanCursor = new(StandardCursorType.SizeAll);
@@ -78,6 +83,9 @@ public sealed class MultiDeviceGraphControl : Control
     private Point _lastPointer;
     private double _cursorA;
     private double _cursorB = 1;
+    private double _cursorFracA = 0.3;
+    private double _cursorFracB = 0.7;
+    private bool _isDraggingBoth;
     private Rect _lastPlotRect;
     private double _activeViewStart;
     private double _activeViewSpan = 1;
@@ -103,7 +111,9 @@ public sealed class MultiDeviceGraphControl : Control
             GraphAutoFollowProperty,
             ShowPointMarkersProperty,
             IsAcquiringProperty,
-            StackedPlotsProperty);
+            StackedPlotsProperty,
+            CursorSnapToDataProperty,
+            CursorFollowsDataProperty);
     }
 
     public MultiDeviceGraphControl()
@@ -211,6 +221,12 @@ public sealed class MultiDeviceGraphControl : Control
     {
         get => GetValue(CursorSnapToDataProperty);
         set => SetValue(CursorSnapToDataProperty, value);
+    }
+
+    public bool CursorFollowsData
+    {
+        get => GetValue(CursorFollowsDataProperty);
+        set => SetValue(CursorFollowsDataProperty, value);
     }
 
     public void ResetView()
@@ -479,15 +495,12 @@ public sealed class MultiDeviceGraphControl : Control
         }
 
         if (!props.IsLeftButtonPressed) return;
-        if (_isStripMode) return;
 
-        var nearA = false;
-        var nearB = false;
-        if (ShowCursors)
-        {
-            nearA = Math.Abs(point.X - CursorToX(_cursorA)) <= 16;
-            nearB = Math.Abs(point.X - CursorToX(_cursorB)) <= 16;
-        }
+        var xA = CursorToX(_cursorA);
+        var xB = CursorToX(_cursorB);
+        var nearA = ShowCursors && Math.Abs(point.X - xA) <= 16;
+        var nearB = ShowCursors && Math.Abs(point.X - xB) <= 16;
+        var betweenCursors = ShowCursors && point.X > Math.Min(xA, xB) && point.X < Math.Max(xA, xB);
 
         if (ShowCursors && (nearA || nearB || e.KeyModifiers.HasFlag(KeyModifiers.Shift)))
         {
@@ -495,7 +508,12 @@ public sealed class MultiDeviceGraphControl : Control
             _isDraggingCursor = true;
             SetCursorFromX(point.X, _dragCursorA);
         }
-        else
+        else if (betweenCursors)
+        {
+            // Grab both cursors and move the pair together until release.
+            _isDraggingBoth = true;
+        }
+        else if (!_isStripMode)
         {
             _isPanning = true;
             Cursor = PanCursor;
@@ -524,16 +542,28 @@ public sealed class MultiDeviceGraphControl : Control
             if (IsAcquiring && maxStart > 0) GraphAutoFollow = fraction >= 0.999;
             InvalidateVisual();
         }
+        else if (_isDraggingBoth)
+        {
+            var deltaS = (point.X - _lastPointer.X) / Math.Max(1, _lastPlotRect.Width) * _activeViewSpan;
+            var lo = Math.Min(_cursorA, _cursorB);
+            var hi = Math.Max(_cursorA, _cursorB);
+            deltaS = Math.Clamp(deltaS, -lo, _activeTotalSpan - hi);
+            _cursorA = Math.Clamp(_cursorA + deltaS, 0, _activeTotalSpan);
+            _cursorB = Math.Clamp(_cursorB + deltaS, 0, _activeTotalSpan);
+            if (CursorSnapToData) { _cursorA = Math.Round(_cursorA); _cursorB = Math.Round(_cursorB); }
+            UpdateCursorFractions();
+            InvalidateVisual();
+        }
         else if (_isDraggingCursor)
         {
             SetCursorFromX(point.X, _dragCursorA);
         }
-        else if (!_isStripMode && ShowCursors)
+        else if (ShowCursors)
         {
             var nearA = Math.Abs(point.X - CursorToX(_cursorA)) <= 14;
             var nearB = Math.Abs(point.X - CursorToX(_cursorB)) <= 14;
             Cursor = (nearA || nearB) ? SizeCursor
-                : _lastPlotRect.Contains(point) ? PanCursor
+                : (!_isStripMode && _lastPlotRect.Contains(point)) ? PanCursor
                 : ArrowCursor;
         }
         else
@@ -549,6 +579,7 @@ public sealed class MultiDeviceGraphControl : Control
         base.OnPointerReleased(e);
         _isPanning = false;
         _isDraggingCursor = false;
+        _isDraggingBoth = false;
         Cursor = ArrowCursor;
         e.Pointer.Capture(null);
     }
@@ -689,7 +720,20 @@ public sealed class MultiDeviceGraphControl : Control
         double viewSpan,
         IBrush textBrush)
     {
-        if (!ShowCursors || _isStripMode) return;
+        if (!ShowCursors) return;
+
+        if (CursorFollowsData)
+        {
+            // Data mode: keep fractions in sync so a later switch to axis mode is seamless.
+            _cursorFracA = Math.Clamp((_cursorA - viewStart) / Math.Max(1, viewSpan), 0, 1);
+            _cursorFracB = Math.Clamp((_cursorB - viewStart) / Math.Max(1, viewSpan), 0, 1);
+        }
+        else
+        {
+            // Axis mode: cursors hold their screen position; re-derive the sample under them.
+            _cursorA = Math.Clamp(viewStart + _cursorFracA * viewSpan, 0, totalSpan);
+            _cursorB = Math.Clamp(viewStart + _cursorFracB * viewSpan, 0, totalSpan);
+        }
 
         _cursorA = Math.Clamp(_cursorA, 0, totalSpan);
         _cursorB = Math.Clamp(_cursorB, 0, totalSpan);
@@ -761,8 +805,8 @@ public sealed class MultiDeviceGraphControl : Control
     private static void DrawModeHint(DrawingContext context, IBrush textBrush, Rect plot, bool isStripMode)
     {
         var hint = isStripMode
-            ? "Strip Chart  |  scroll wheel = zoom"
-            : "Sliding Window  |  scroll = zoom  \u2022  right-drag = pan  \u2022  drag cursor handles  \u2022  Shift+click = cursor A";
+            ? "Strip Chart  |  scroll = zoom  \u2022  drag cursor handles  \u2022  drag between = move both"
+            : "Sliding Window  |  scroll = zoom  \u2022  right-drag = pan  \u2022  drag cursors  \u2022  drag between = move both  \u2022  Shift+click = cursor A";
         var ft = new FormattedText(hint, CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10.5, textBrush);
         context.DrawText(ft, new Point(plot.Left + 4, Math.Max(0, plot.Top - 13)));
@@ -796,8 +840,15 @@ public sealed class MultiDeviceGraphControl : Control
         var rel = Math.Clamp((x - _lastPlotRect.Left) / Math.Max(1, _lastPlotRect.Width), 0, 1);
         var sample = Math.Clamp(_activeViewStart + rel * _activeViewSpan, 0, _activeTotalSpan);
         if (CursorSnapToData) sample = Math.Round(sample);
-        if (cursorA) _cursorA = sample; else _cursorB = sample;
+        if (cursorA) { _cursorA = sample; _cursorFracA = rel; }
+        else { _cursorB = sample; _cursorFracB = rel; }
         InvalidateVisual();
+    }
+
+    private void UpdateCursorFractions()
+    {
+        _cursorFracA = Math.Clamp((_cursorA - _activeViewStart) / Math.Max(1, _activeViewSpan), 0, 1);
+        _cursorFracB = Math.Clamp((_cursorB - _activeViewStart) / Math.Max(1, _activeViewSpan), 0, 1);
     }
 
     private double CursorToX(double cursor)

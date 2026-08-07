@@ -19,6 +19,7 @@ public sealed class DaqProfile
     public bool ShowCursors { get; set; } = true;
     public bool ShowAlarmLines { get; set; } = true;
     public bool CursorSnapToData { get; set; }
+    public bool CursorFollowsData { get; set; } = true;
     public bool ShowPointMarkers { get; set; }
     public bool GraphAutoFollow { get; set; } = true;
 

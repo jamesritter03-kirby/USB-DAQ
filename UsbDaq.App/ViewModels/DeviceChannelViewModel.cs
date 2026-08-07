@@ -90,6 +90,7 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
         {
             if (SetField(ref _traceColor, value))
             {
+                OnPropertyChanged(nameof(TraceBrush));
                 var hex = $"#{value.R:X2}{value.G:X2}{value.B:X2}";
                 if (!_colorHex.Equals(hex, StringComparison.OrdinalIgnoreCase))
                 {
@@ -99,6 +100,9 @@ public sealed class DeviceChannelViewModel : INotifyPropertyChanged
             }
         }
     }
+
+    // Brush form of the trace color for XAML backgrounds (Color does not bind to IBrush).
+    public IBrush TraceBrush => new SolidColorBrush(_traceColor);
 
     public bool IsVisible
     {
