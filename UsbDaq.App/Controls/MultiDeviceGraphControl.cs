@@ -334,6 +334,7 @@ public sealed class MultiDeviceGraphControl : Control
         if (StackedPlots)
         {
             RenderStacked(context, channels, plot, viewStart, viewSpan, ySpan, axisBrush, gridPen, axisPen);
+            DrawCursors(context, channels, plot, totalSpan, viewStart, viewSpan, axisBrush);
             DrawModeHint(context, axisBrush, plot, isStripMode);
             return;
         }
